@@ -46,7 +46,7 @@ sudo mkdir -p /var/www
 cd /var/www
 
 # Clonar o repositorio
-sudo git clone https://github.com/artbras/facilita.adv-original.git facilitaadv
+sudo git clone https://github.com/artbras/facilita.adv.br.git facilitaadv
 cd facilitaadv
 
 # Dar permissoes ao usuario atual
