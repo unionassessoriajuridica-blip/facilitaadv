@@ -102,9 +102,24 @@ Preferred communication style: Simple, everyday language.
 - **Security**: All API calls proxied through backend to protect token
 - **Database Table**: `zapsign_documents` - requires Supabase migration
 
+**ZapSign Webhook** (for automatic status updates):
+- **Endpoint**: `POST /api/zapsign/webhook`
+- **Purpose**: Receives events when documents are signed
+- **Event Type**: `doc_signed` - triggered when a signer signs the document
+- **Security**: Optional `ZAPSIGN_WEBHOOK_SECRET` env var for validation
+
+**Webhook Configuration in ZapSign**:
+1. Access ZapSign dashboard > Webhooks configuration
+2. Add new webhook with URL: `https://[YOUR_PUBLISHED_DOMAIN]/api/zapsign/webhook`
+3. Select event: `documento-assinado` (doc_signed)
+4. (Optional) Configure shared secret and add to Replit Secrets as `ZAPSIGN_WEBHOOK_SECRET`
+
+**Production Webhook URL**: After publishing, use the production domain URL
+
 **Migration Scripts** (run in Supabase SQL Editor):
 - `supabase/migrations/20251220_create_zapsign_documents.sql` - Full script with RLS
 - `supabase/migrations/20251220_create_zapsign_documents_simple.sql` - Simplified version
+- `supabase/migrations/20251220_add_zapsign_webhook_fields.sql` - Webhook fields (signed_file_url, last_signer_*, signed_at)
 - `supabase/migrations/README_ZAPSIGN.md` - Instructions
 
 ### Communication
