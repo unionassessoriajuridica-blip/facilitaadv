@@ -66,8 +66,19 @@ Preferred communication style: Simple, everyday language.
 - Services use Replit Connectors for secure token management
 - No need to implement OAuth flow manually - handled by Replit integration
 
-### Document Signing
-- **DocuSeal**: Electronic document signing service (via Supabase functions)
+### Document Signing (ZapSign)
+- **ZapSign Integration**: Digital signature service for legal documents
+- **Server Service**: `server/services/zapsignService.ts` - API communication
+- **Frontend Hook**: `client/src/hooks/useZapSign.ts` - React integration
+- **UI Component**: `client/src/components/ZapSignDocuments.tsx` - Document management
+- **API Token**: Stored in Replit Secrets as `ZAPSIGN_API_TOKEN`
+- **Security**: All API calls proxied through backend to protect token
+- **Database Table**: `zapsign_documents` - requires Supabase migration
+
+**Migration Scripts** (run in Supabase SQL Editor):
+- `supabase/migrations/20251220_create_zapsign_documents.sql` - Full script with RLS
+- `supabase/migrations/20251220_create_zapsign_documents_simple.sql` - Simplified version
+- `supabase/migrations/README_ZAPSIGN.md` - Instructions
 
 ### Communication
 - **WhatsApp Integration**: Via external API for sending billing messages
