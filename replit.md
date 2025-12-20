@@ -57,7 +57,6 @@ Preferred communication style: Simple, everyday language.
 - **Google OAuth 2.0**: Authentication for Google services
 - **Gmail Integration**: Email sending and management (`client/src/services/googleGmailService.ts`)
 - **Google Calendar Integration**: Calendar event management (`client/src/services/googleCalendarService.ts`)
-- **Google Drive Integration**: File storage and management (`client/src/services/googleDriveService.ts`)
 - **Credentials**: Managed via `VITE_GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_SECRET` secrets
 - **Required Scopes**: userinfo.email, userinfo.profile, gmail.send, calendar, drive
 
@@ -65,6 +64,34 @@ Preferred communication style: Simple, everyday language.
 - Google credentials are stored as Replit secrets
 - Services use Replit Connectors for secure token management
 - No need to implement OAuth flow manually - handled by Replit integration
+
+### Google Drive Integration (Document Sync)
+- **Server Service**: `server/services/googleDriveService.ts` - Backend API communication
+- **Frontend Hook**: `client/src/hooks/useGoogleDrive.ts` - React integration
+- **UI Component**: `client/src/components/ProcessoArquivos.tsx` - File upload with Drive sync
+- **Connection**: Via Replit Connectors (automatic OAuth and token refresh)
+- **Root Folder**: "FACILITA ADV" created automatically in user's Drive
+- **Process Folders**: Created automatically using process number as folder name
+
+**Features**:
+- Automatic sync of uploaded files to Google Drive
+- Creates folder structure: FACILITA ADV > [numero_processo]
+- Manual sync button for existing files not yet in Drive
+- Direct link to view files in Google Drive
+- Connection status indicator in UI
+
+**API Endpoints** (`server/index.ts`):
+- `GET /api/drive/status` - Check if Drive is connected
+- `GET /api/drive/root-folder` - Get/create root folder
+- `GET /api/drive/process-folder/:numeroProcesso` - Get/create process folder
+- `POST /api/drive/upload` - Upload file with multipart form data
+- `POST /api/drive/upload-from-url` - Upload file from URL
+- `GET /api/drive/folder/:folderId/files` - List folder contents
+- `GET /api/drive/process-folders` - List all process folders
+- `DELETE /api/drive/files/:fileId` - Delete file from Drive
+
+**Migration Script** (run in Supabase SQL Editor):
+- `supabase/migrations/20251220_add_google_drive_fields.sql` - Add Drive fields to documentos_processo
 
 ### Document Signing (ZapSign)
 - **ZapSign Integration**: Digital signature service for legal documents

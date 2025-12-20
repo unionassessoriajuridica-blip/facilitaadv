@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { ProcessoTarefas } from "@/components/ProcessoTarefas";
 import { ZapSignDocuments } from "@/components/ZapSignDocuments";
+import { ProcessoArquivos } from "@/components/ProcessoArquivos";
 import { datajudService, DatajudMovimento } from "@/services/datajudService";
 import { useToast } from "@/hooks/use-toast.ts";
 import { supabase } from "@/integrations/supabase/client.ts";
@@ -726,53 +727,12 @@ const ProcessView = () => {
               </TabsContent>
 
               <TabsContent value="arquivos" className="mt-6">
-                <div className="space-y-6">
-                  <h3 className="text-lg font-semibold">Arquivos</h3>
-
-                  {documentos.length > 0 ? (
-                    <div className="space-y-4">
-                      {documentos.map((doc, index) => (
-                        <Card key={index}>
-                          <CardContent className="p-4">
-                            <div className="flex justify-between items-center">
-                              <div>
-                                <p className="font-medium">
-                                  {doc.nome_arquivo}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Tipo: {doc.tipo_arquivo} • Tamanho:{" "}
-                                  {(doc.tamanho_arquivo / 1024 / 1024).toFixed(
-                                    2
-                                  )}{" "}
-                                  MB
-                                </p>
-                                {doc.descricao && (
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {doc.descricao}
-                                  </p>
-                                )}
-                              </div>
-                              <Button variant="outline" size="sm" asChild>
-                                <a
-                                  href={doc.url_arquivo}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  <FileText className="w-4 h-4 mr-2" />
-                                  Visualizar
-                                </a>
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground">
-                      Nenhum arquivo anexado.
-                    </p>
-                  )}
-                </div>
+                <ProcessoArquivos
+                  processoId={id!}
+                  numeroProcesso={processo.numero_processo}
+                  documentos={documentos}
+                  onDocumentosChange={loadProcessData}
+                />
               </TabsContent>
 
               <TabsContent value="assinatura" className="mt-6">

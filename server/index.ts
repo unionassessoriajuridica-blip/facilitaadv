@@ -2,7 +2,9 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { setupVite, serveStatic, log } from "./vite";
 import * as zapsignService from "./services/zapsignService";
+import * as googleDriveService from "./services/googleDriveService";
 import type { ZapsignCreateDocRequest } from "@shared/schema";
+import multer from "multer";
 
 const app = express();
 app.use(express.json());
@@ -177,6 +179,126 @@ app.post("/api/zapsign/build-signer", async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("[ZapSign] Build signer error:", error);
     res.status(500).json({ error: error.message || "Failed to build signer" });
+  }
+});
+
+// Google Drive API Routes
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
+
+app.get("/api/drive/status", async (req: Request, res: Response) => {
+  try {
+    const connected = await googleDriveService.isConnected();
+    res.json({ connected });
+  } catch (error: any) {
+    console.error("[Google Drive] Status check error:", error);
+    res.json({ connected: false, error: error.message });
+  }
+});
+
+app.get("/api/drive/root-folder", async (req: Request, res: Response) => {
+  try {
+    const folderId = await googleDriveService.getOrCreateRootFolder();
+    res.json({ folderId, folderName: "FACILITA ADV" });
+  } catch (error: any) {
+    console.error("[Google Drive] Root folder error:", error);
+    res.status(500).json({ error: error.message || "Failed to get/create root folder" });
+  }
+});
+
+app.get("/api/drive/process-folder/:numeroProcesso", async (req: Request, res: Response) => {
+  try {
+    const { numeroProcesso } = req.params;
+    const folderId = await googleDriveService.getOrCreateProcessFolder(numeroProcesso);
+    res.json({ folderId, numeroProcesso });
+  } catch (error: any) {
+    console.error("[Google Drive] Process folder error:", error);
+    res.status(500).json({ error: error.message || "Failed to get/create process folder" });
+  }
+});
+
+app.post("/api/drive/upload", upload.single("file"), async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+    const { numeroProcesso, fileName } = req.body;
+    
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+    
+    if (!numeroProcesso) {
+      return res.status(400).json({ error: "numeroProcesso is required" });
+    }
+    
+    const result = await googleDriveService.uploadFile(
+      fileName || file.originalname,
+      file.mimetype,
+      file.buffer,
+      numeroProcesso
+    );
+    
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Google Drive] Upload error:", error);
+    res.status(500).json({ error: error.message || "Failed to upload file" });
+  }
+});
+
+app.post("/api/drive/upload-from-url", async (req: Request, res: Response) => {
+  try {
+    const { fileUrl, fileName, numeroProcesso } = req.body;
+    
+    if (!fileUrl || !fileName || !numeroProcesso) {
+      return res.status(400).json({ error: "fileUrl, fileName, and numeroProcesso are required" });
+    }
+    
+    const result = await googleDriveService.uploadFromUrl(fileUrl, fileName, numeroProcesso);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Google Drive] Upload from URL error:", error);
+    res.status(500).json({ error: error.message || "Failed to upload file from URL" });
+  }
+});
+
+app.get("/api/drive/folder/:folderId/files", async (req: Request, res: Response) => {
+  try {
+    const { folderId } = req.params;
+    const files = await googleDriveService.listFolderContents(folderId);
+    res.json(files);
+  } catch (error: any) {
+    console.error("[Google Drive] List files error:", error);
+    res.status(500).json({ error: error.message || "Failed to list files" });
+  }
+});
+
+app.get("/api/drive/process-folders", async (req: Request, res: Response) => {
+  try {
+    const folders = await googleDriveService.listProcessFolders();
+    res.json(folders);
+  } catch (error: any) {
+    console.error("[Google Drive] List process folders error:", error);
+    res.status(500).json({ error: error.message || "Failed to list process folders" });
+  }
+});
+
+app.delete("/api/drive/files/:fileId", async (req: Request, res: Response) => {
+  try {
+    const { fileId } = req.params;
+    await googleDriveService.deleteFile(fileId);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Google Drive] Delete file error:", error);
+    res.status(500).json({ error: error.message || "Failed to delete file" });
+  }
+});
+
+app.get("/api/drive/files/:fileId", async (req: Request, res: Response) => {
+  try {
+    const { fileId } = req.params;
+    const file = await googleDriveService.getFileDetails(fileId);
+    res.json(file);
+  } catch (error: any) {
+    console.error("[Google Drive] Get file details error:", error);
+    res.status(500).json({ error: error.message || "Failed to get file details" });
   }
 });
 
