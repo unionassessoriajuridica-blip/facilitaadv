@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "lib": ["deno.window", "deno.unstable", "esnext"],
+    "types": []
+  },
+  "importMap": "./import_map.json",
+  "tasks": {
+    "dev": "supabase functions serve docuseal-upload --env-file ./.env.local --no-verify-jwt --legacy-bundle",
+    "deploy": "supabase functions deploy docuseal-upload --env-file ./.env.local --no-verify-jwt --legacy-bundle"
+  },
+  "lint": {
+    "rules": {
+      "tags": ["recommended"],
+      "include": ["no-unused-vars"]
+    }
+  },
+  "fmt": {
+    "options": {
+      "useTabs": false,
+      "lineWidth": 80,
+      "indentWidth": 2,
+      "singleQuote": false,
+      "proseWrap": "preserve"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://*.googleapis.com https://*.gstatic.com https://*.google.com https://accounts.google.com 'unsafe-inline' 'unsafe-eval' blob: data:; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' https://*.googleusercontent.com data: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://facilita.adv.br https://soria-adv.onrender.com https://*.onrender.com https://*.soria-adv.onrender.com https://*.googleapis.com https://*.google.com https://zskyvltkzcpkelusvbbm.supabase.co https://soria-adv.vercel.app https://api.docuseal.com; frame-src 'self' https://accounts.google.com https://maps.google.com https://www.google.com https://*.google.com; worker-src 'self' blob:;"
+        },
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "authorization, x-client-info, apikey, content-type"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

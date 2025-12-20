@@ -1,0 +1,40 @@
+~/workspace$ git config http.postBuffer 524288000
+git push origin main --force
+Enumerating objects: 715, done.
+Counting objects: 100% (715/715), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (158/158), done.
+Writing objects: 100% (616/616), 4.07 MiB | 119.11 MiB/s, done.
+Total 616 (delta 480), reused 551 (delta 435), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (480/480), completed with 85 local objects.
+remote: fatal: did not receive expected object 6f041606143559113a4e134893ca80f721001bda
+error: remote unpack failed: index-pack failed
+To https://github.com/artbras/facilita.adv-original.git
+ ! [remote rejected] main -> main (failed)
+error: failed to push some refs to 'https://github.com/artbras/facilita.adv-original.git'
+~/workspace$ git push origin HEAD~20:main --force
+git push origin main --force
+Enumerating objects: 591, done.
+Counting objects: 100% (591/591), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (180/180), done.
+Writing objects: 100% (493/493), 3.43 MiB | 185.04 MiB/s, done.
+Total 493 (delta 379), reused 383 (delta 291), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (379/379), completed with 85 local objects.
+remote: fatal: did not receive expected object 6f041606143559113a4e134893ca80f721001bda
+error: remote unpack failed: index-pack failed
+To https://github.com/artbras/facilita.adv-original.git
+ ! [remote rejected] HEAD~20 -> main (failed)
+error: failed to push some refs to 'https://github.com/artbras/facilita.adv-original.git'
+Enumerating objects: 715, done.
+Counting objects: 100% (715/715), done.
+Delta compression using up to 8 threads
+Compressing objects: 100% (158/158), done.
+Writing objects: 100% (616/616), 4.07 MiB | 181.23 MiB/s, done.
+Total 616 (delta 481), reused 551 (delta 435), pack-reused 0 (from 0)
+remote: Resolving deltas: 100% (481/481), completed with 85 local objects.
+remote: fatal: did not receive expected object 6f041606143559113a4e134893ca80f721001bda
+error: remote unpack failed: index-pack failed
+To https://github.com/artbras/facilita.adv-original.git
+ ! [remote rejected] main -> main (failed)
+error: failed to push some refs to 'https://github.com/artbras/facilita.adv-original.git

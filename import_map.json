@@ -1,0 +1,11 @@
+{
+  "imports": {
+    "@std/http": "https://deno.land/std@0.200.0/http/mod.ts",
+    "@std/dotenv": "https://deno.land/std@0.200.0/dotenv/mod.ts",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@^2.39.0",
+    "@/": "./src/",
+    "@functions/": "./supabase/functions/",
+    "@/integrations/": "./src/integrations/",
+    "@/hooks/": "./src/hooks/"
+  }
+}

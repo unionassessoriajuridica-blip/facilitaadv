@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "deno.ns"],
+    "types": []
+  },
+  "include": ["supabase/functions/docuseal-upload/index.ts"],
+  "exclude": ["node_modules"]
+}

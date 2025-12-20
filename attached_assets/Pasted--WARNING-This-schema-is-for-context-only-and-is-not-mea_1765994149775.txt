@@ -1,0 +1,184 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.chat_conversations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  messages jsonb NOT NULL DEFAULT '[]'::jsonb,
+  mode text NOT NULL DEFAULT 'chat'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT chat_conversations_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.clientes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  nome text NOT NULL,
+  email text,
+  telefone text,
+  cpf_cnpj text,
+  endereco text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT clientes_pkey PRIMARY KEY (id),
+  CONSTRAINT clientes_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.documentos_assinatura (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  nome text NOT NULL,
+  tipo text NOT NULL,
+  status text DEFAULT 'PENDENTE'::text,
+  data_envio timestamp with time zone DEFAULT now(),
+  data_assinatura timestamp with time zone,
+  signatarios ARRAY DEFAULT '{}'::uuid[],
+  arquivo_url text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT documentos_assinatura_pkey PRIMARY KEY (id),
+  CONSTRAINT documentos_assinatura_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.documentos_digitais (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  nome text NOT NULL,
+  tipo text,
+  status text NOT NULL DEFAULT 'TEMPLATE_CRIADO'::text,
+  docuseal_template_id text,
+  docuseal_submission_id text,
+  signatarios jsonb,
+  webhook_data jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  metadata jsonb DEFAULT '{}'::jsonb,
+  tamanho bigint,
+  data_conclusao timestamp with time zone,
+  CONSTRAINT documentos_digitais_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.documentos_processo (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  processo_id uuid,
+  cliente_nome text NOT NULL,
+  nome_arquivo text NOT NULL,
+  tipo_arquivo text NOT NULL,
+  tamanho_arquivo bigint NOT NULL,
+  url_arquivo text NOT NULL,
+  descricao text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT documentos_processo_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.financeiro (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  processo_id uuid,
+  cliente_nome text NOT NULL,
+  valor numeric NOT NULL,
+  tipo text NOT NULL,
+  status text DEFAULT 'PENDENTE'::text,
+  vencimento date,
+  data_pagamento date,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  ultimo_envio_cobranca timestamp with time zone,
+  tentativas_cobranca integer DEFAULT 0,
+  CONSTRAINT financeiro_pkey PRIMARY KEY (id),
+  CONSTRAINT financeiro_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT financeiro_processo_id_fkey FOREIGN KEY (processo_id) REFERENCES public.processos(id)
+);
+CREATE TABLE public.notificacoes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  tipo text NOT NULL,
+  titulo text NOT NULL,
+  mensagem text NOT NULL,
+  cliente_nome text,
+  lida boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT notificacoes_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.observacoes_processo (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  processo_id uuid,
+  cliente_nome text NOT NULL,
+  titulo text NOT NULL,
+  conteudo text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT observacoes_processo_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.processos (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  numero_processo text NOT NULL,
+  cliente_id uuid NOT NULL,
+  tipo_processo text NOT NULL,
+  cliente_preso boolean DEFAULT false,
+  descricao text,
+  prazo date,
+  status text DEFAULT 'ATIVO'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT processos_pkey PRIMARY KEY (id),
+  CONSTRAINT processos_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
+  CONSTRAINT fk_processos_clientes FOREIGN KEY (cliente_id) REFERENCES public.clientes(id)
+);
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.responsavel_financeiro (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  nome text NOT NULL,
+  rg text NOT NULL,
+  cpf text NOT NULL,
+  data_nascimento date NOT NULL,
+  telefone text NOT NULL,
+  email text NOT NULL,
+  endereco_completo text NOT NULL,
+  cep text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  processo_id uuid,
+  CONSTRAINT responsavel_financeiro_pkey PRIMARY KEY (id),
+  CONSTRAINT fk_responsavel_processo FOREIGN KEY (processo_id) REFERENCES public.processos(id)
+);
+CREATE TABLE public.user_invitations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email text NOT NULL,
+  nome text NOT NULL,
+  permissions ARRAY NOT NULL DEFAULT '{}'::permission_type[],
+  invited_by uuid NOT NULL,
+  status text NOT NULL DEFAULT 'PENDING'::text,
+  token text NOT NULL DEFAULT (gen_random_uuid())::text UNIQUE,
+  expires_at timestamp with time zone NOT NULL DEFAULT (now() + '7 days'::interval),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  accepted_at timestamp with time zone,
+  user_id uuid,
+  CONSTRAINT user_invitations_pkey PRIMARY KEY (id),
+  CONSTRAINT user_invitations_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.user_permissions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  permission USER-DEFINED NOT NULL,
+  granted_by uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_permissions_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.user_roles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  role text NOT NULL DEFAULT 'default'::text,
+  CONSTRAINT user_roles_pkey PRIMARY KEY (id),
+  CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);

@@ -1,0 +1,194 @@
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, uuid, jsonb, date, pgEnum } from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+
+export const appRoleEnum = pgEnum('app_role', ['master', 'admin', 'user']);
+export const permissionTypeEnum = pgEnum('permission_type', ['READ', 'WRITE', 'ADMIN']);
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
+  nome: text("nome"),
+  role: text("role").default("user"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const clientes = pgTable("clientes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  nome: text("nome").notNull(),
+  email: text("email"),
+  telefone: text("telefone"),
+  cpfCnpj: text("cpf_cnpj"),
+  endereco: text("endereco"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const processos = pgTable("processos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  clienteId: uuid("cliente_id").notNull().references(() => clientes.id),
+  numeroProcesso: text("numero_processo").notNull(),
+  tipoProcesso: text("tipo_processo").notNull(),
+  clientePreso: boolean("cliente_preso").default(false),
+  descricao: text("descricao"),
+  prazo: date("prazo"),
+  status: text("status").default("ATIVO"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const financeiro = pgTable("financeiro", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  processoId: uuid("processo_id").references(() => processos.id),
+  clienteNome: text("cliente_nome").notNull(),
+  valor: numeric("valor").notNull(),
+  tipo: text("tipo").notNull(),
+  status: text("status").default("PENDENTE"),
+  vencimento: date("vencimento"),
+  dataPagamento: date("data_pagamento"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const chatConversations = pgTable("chat_conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  messages: jsonb("messages").default([]),
+  mode: text("mode").default("chat"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const documentosAssinatura = pgTable("documentos_assinatura", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  nome: text("nome").notNull(),
+  tipo: text("tipo").notNull(),
+  status: text("status").default("PENDENTE"),
+  dataEnvio: timestamp("data_envio").defaultNow(),
+  dataAssinatura: timestamp("data_assinatura"),
+  signatarios: text("signatarios").array(),
+  arquivoUrl: text("arquivo_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const documentosDigitais = pgTable("documentos_digitais", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  nome: text("nome").notNull(),
+  tipo: text("tipo"),
+  status: text("status").default("TEMPLATE_CRIADO"),
+  docusealTemplateId: text("docuseal_template_id"),
+  docusealSubmissionId: text("docuseal_submission_id"),
+  signatarios: jsonb("signatarios"),
+  webhookData: jsonb("webhook_data"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const documentosProcesso = pgTable("documentos_processo", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  processoId: uuid("processo_id").references(() => processos.id),
+  clienteNome: text("cliente_nome").notNull(),
+  nomeArquivo: text("nome_arquivo").notNull(),
+  tipoArquivo: text("tipo_arquivo").notNull(),
+  tamanhoArquivo: integer("tamanho_arquivo").notNull(),
+  urlArquivo: text("url_arquivo").notNull(),
+  descricao: text("descricao"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const notificacoes = pgTable("notificacoes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  tipo: text("tipo").notNull(),
+  titulo: text("titulo").notNull(),
+  mensagem: text("mensagem").notNull(),
+  clienteNome: text("cliente_nome"),
+  lida: boolean("lida").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const observacoesProcesso = pgTable("observacoes_processo", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  processoId: uuid("processo_id").references(() => processos.id),
+  clienteNome: text("cliente_nome").notNull(),
+  titulo: text("titulo").notNull(),
+  conteudo: text("conteudo").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const responsavelFinanceiro = pgTable("responsavel_financeiro", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  nome: text("nome").notNull(),
+  rg: text("rg").notNull(),
+  cpf: text("cpf").notNull(),
+  dataNascimento: date("data_nascimento").notNull(),
+  telefone: text("telefone").notNull(),
+  email: text("email").notNull(),
+  enderecoCompleto: text("endereco_completo").notNull(),
+  cep: text("cep").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userInvitations = pgTable("user_invitations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  nome: text("nome").notNull(),
+  invitedBy: integer("invited_by").notNull().references(() => users.id),
+  status: text("status").default("PENDING"),
+  token: text("token").unique(),
+  permissions: text("permissions").array(),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userPermissions = pgTable("user_permissions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  permission: text("permission").notNull(),
+  grantedBy: integer("granted_by").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const userRoles = pgTable("user_roles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  role: text("role").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertClienteSchema = createInsertSchema(clientes).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertProcessoSchema = createInsertSchema(processos).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertFinanceiroSchema = createInsertSchema(financeiro).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertChatConversationSchema = createInsertSchema(chatConversations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertNotificacaoSchema = createInsertSchema(notificacoes).omit({ id: true, createdAt: true, updatedAt: true });
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
+export type User = typeof users.$inferSelect;
+export type InsertCliente = z.infer<typeof insertClienteSchema>;
+export type Cliente = typeof clientes.$inferSelect;
+export type InsertProcesso = z.infer<typeof insertProcessoSchema>;
+export type Processo = typeof processos.$inferSelect;
+export type InsertFinanceiro = z.infer<typeof insertFinanceiroSchema>;
+export type Financeiro = typeof financeiro.$inferSelect;
+export type InsertChatConversation = z.infer<typeof insertChatConversationSchema>;
+export type ChatConversation = typeof chatConversations.$inferSelect;
+export type InsertNotificacao = z.infer<typeof insertNotificacaoSchema>;
+export type Notificacao = typeof notificacoes.$inferSelect;

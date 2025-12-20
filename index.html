@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Facilita adv</title>
+  <meta name="description" content="Facilita adv" />
+  <meta name="author" content="Lovable" />
+
+  <!-- Metadados OG -->
+  <meta property="og:title" content="Facilita adv" />
+  <meta property="og:description" content="Facilita adv" />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+  <!-- Metadados Twitter -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@lovable_dev" />
+  <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+  <meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' https://*.googleapis.com https://*.gstatic.com https://*.google.com https://accounts.google.com 'unsafe-inline' 'unsafe-eval' blob: data:;
+  style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
+  img-src 'self' https://*.googleusercontent.com data: blob:;
+  font-src 'self' https://fonts.gstatic.com;
+  connect-src 'self' https://soria-adv.onrender.com https://*.onrender.com https://*.soria-adv.onrender.com https://facilita.adv.br https://*.googleapis.com https://*.google.com https://zskyvltkzcpkelusvbbm.supabase.co https://api.docuseal.com;
+  frame-src 'self' https://accounts.google.com https://maps.google.com https://www.google.com https://*.google.com;
+  report-uri https://accounts.google.com/_/IdpIFrameHttp/cspreport/fine-allowlist;
+  worker-src 'self' blob:;
+">
+
+  <meta http-equiv="Cross-Origin-Opener-Policy" content="unsafe-none" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <meta name="google-signin-client_id" content="%VITE_GOOGLE_CLIENT_ID%">
+
+
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

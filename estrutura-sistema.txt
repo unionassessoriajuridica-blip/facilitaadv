@@ -1,0 +1,156 @@
+├── facilita-adv/
+├── dist/
+│     ├─── assets/
+│     │     ├─ index-
+│     │     ├─ index-
+│     │     ├─ index.es-
+│     │     └─ purify.es-
+│     │
+│     ├─── favicon.ico
+│     ├─── google200261c3d0adc1a6.html
+│     ├─── index.html
+│     ├─── placeholder.svg
+│     └─── robots.txt     
+│           
+├── node_modules/
+│
+├── public/
+│      ├─ favicon.ico
+│      ├─ google200261c3d0adc1a6.html
+│      ├─ index.html
+│      ├─ placeholder.svg
+│      └─ robots.txt           
+│ 
+├── src/│  
+│     │    
+│     ├─ components/    
+│     │    ├─ ui/**diretório de estitilazação 
+│     │    ├─ AdvancedChatInput.tsx     
+│     │    ├─ ClienteDataButton.tsx  
+│     │    ├─ ClienteDataCard.tsx  
+│     │    ├─ DocumentUpload.tsx 
+│     │    ├─ FeatureCard.tsx  
+│     │    ├─ FeatureGrid.tsx  
+│     │    ├─ FileUpload.tsx     
+│     │    ├─ FinanceiroSummary.tsx  
+│     │    ├─ FinancialReports.tsx 
+│     │    ├─ Footer.tsx 
+│     │    ├─ FrontendLayout.tsx    
+│     │    ├─ GmailSender.tsx
+│     │    ├─ GoogleCalendarCard.tsx  
+│     │    ├─ GoogleIntegrationCard.tsx  
+│     │    ├─ GooglePermissionsDialog.tsx  
+│     │    ├─ Header.tsx  
+│     │    ├─ ImageHeader.tsx  
+│     │    ├─ ImageTextSection.tsx 
+│     │    ├─ Menu.tsx        
+│     │    ├─ NotificationCenter.tsx   
+│     │    ├─ Parallax.tsx    
+│     │    ├─ ParcelaCard.tsx 
+│     │    ├─ PrivateRoute.tsx   
+│     │    ├─ ProcessNotes.tsx  
+│     │    ├─ ResponsavelFinanceiro.tsx
+│     │    ├─ SSLBadge.tsx 
+│     │    ├─ SubtleNotificationBell.tsx   
+│     │    ├─ WhatsAppManager.tsx    
+│     │    └─ WhitResourceAccess.tsx  
+│     │                    
+│     ├─ content/   
+│     │    ├─ politica-privacidade.md  
+│     │    └─ termos.md 
+│     │    
+│     ├─ hooks/   
+│     │    ├─ use-mobile.tsx  
+│     │    ├─ use-toast.ts  
+│     │    ├─ useAuth.ts
+│     │    ├─ useBulkCobrancaMessages.ts 
+│     │    ├─ useClienteExcel.ts  
+│     │    ├─ useDocuSeal.ts  
+│     │    ├─ useEmailService.ts       
+│     │    ├─ useFileUploads.ts     
+│     │    ├─ useGmail.ts  
+│     │    ├─ useGoogleAuth.ts  
+│     │    ├─ useGoogleCalendar.ts
+│     │    ├─ usePermissions.ts  
+│     │    ├─ useTemplateId.ts  
+│     │    ├─ useUserRole.ts 
+│     │    └─ useWhatsAppStats.ts  
+│     │    
+│     ├─ integration/ 
+│     │    └─ supabase/
+│     │             ├─ client.ts
+│     │             └─ types.ts 
+│     ├─ lib/
+│     │     └─ utils.ts
+│     │
+│     ├─ pages/ 
+│     │   ├─ api/
+│     │   │   └─ auth/   
+│     │   │       └─ [...nextauth].js 
+│     │   │
+│     │   ├─ AcceptInvitation.tsx
+│     │   ├─ Auth.tsx
+│     │   ├─ CalendarManagement.tsx
+│     │   ├─ Contato.tsx
+│     │   ├─ Dashboard.tsx
+│     │   ├─ FaciliSign.tsx
+│     │   ├─ Financial.tsx
+│     │   ├─ GoogleCallback.tsx
+│     │   ├─ GoogleIntegration.tsx
+│     │   ├─ IAFacilita.tsx
+│     │   ├─ Index.tsx
+│     │   ├─ NewProcess.tsx
+│     │   ├─ NotFound.tsx
+│     │   ├─ PoliticaPrivacidade.tsx
+│     │   ├─ ProcessFinancial.tsx
+│     │   ├─ ProcessView.tsx
+│     │   ├─ Servicos.tsx
+│     │   ├─ Sobre.tsx
+│     │   ├─ TermosServico.tsx
+│     │   ├─ UserManagement.tsx
+│     │   └─ WhatsAppManagement.tsx
+│     │          
+│     ├─ routes/api/twilio
+│     │   └─ send-message.ts    
+│     │             
+│     ├─ services/ 
+│     │   ├─ cobrancaScheduler.ts
+│     │   └─ whatsappService.ts
+│     │          
+│     ├─ utils/ 
+│     │   ├─ accessUtils.ts
+│     │   ├─ currency.ts
+│     │   ├─ dataValidation.ts
+│     │   ├─ mask.ts
+│     │   └─ resourceAccessUtils.ts
+│     │   
+│     ├─ App.css
+│     ├─ App.tsx
+│     ├─ index.tsx
+│     ├─ main.tsx
+│     └─ vite-env.d.ts
+│
+├── supabase/ 
+│        └─ functions/
+│               ├──────────── docuseal-upload/
+│        				   └─── index.ts
+├── .env.local
+├── .gitgnore
+├── .bun.lockb
+├── components.json
+├── deno.json
+├── eslint.config.js
+├── import_map.json
+├── index.html
+├── next.config.js
+├── package-lock.json
+├── package.json
+├── postcss.config.js
+├── README.md
+├── tailwind.config.ts
+├── tsconfig.app.json
+├── tsconfig.deno.json
+├── tsconfig.json
+├── tsconfig.node.json
+├── vercel.json
+└── vite.config.ts
