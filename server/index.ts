@@ -3,6 +3,7 @@ import { createServer } from "http";
 import { setupVite, serveStatic, log } from "./vite";
 import * as zapsignService from "./services/zapsignService";
 import * as googleDriveService from "./services/googleDriveService";
+import * as resendService from "./services/resendService";
 import type { ZapsignCreateDocRequest } from "@shared/schema";
 import multer from "multer";
 
@@ -491,6 +492,157 @@ app.get("/api/drive/files/:fileId", async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("[Google Drive] Get file details error:", error);
     res.status(500).json({ error: error.message || "Failed to get file details" });
+  }
+});
+
+// Email Routes (via Resend - Replit Connector)
+app.post("/api/email/send", async (req: Request, res: Response) => {
+  try {
+    const { to, subject, html, text, replyTo } = req.body;
+    
+    if (!to || !subject || !html) {
+      return res.status(400).json({ error: "to, subject, and html are required" });
+    }
+    
+    const result = await resendService.sendEmail({ to, subject, html, text, replyTo });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Email] Send error:", error);
+    res.status(500).json({ error: error.message || "Failed to send email" });
+  }
+});
+
+app.post("/api/email/document-signature", async (req: Request, res: Response) => {
+  try {
+    const { to, clientName, documentName, signerName, signatureUrl } = req.body;
+    
+    if (!to || !clientName || !documentName || !signerName || !signatureUrl) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    const result = await resendService.sendDocumentSignatureRequest({
+      to,
+      clientName,
+      documentName,
+      signerName,
+      signatureUrl,
+    });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Email] Document signature request error:", error);
+    res.status(500).json({ error: error.message || "Failed to send signature request email" });
+  }
+});
+
+app.post("/api/email/document-signed", async (req: Request, res: Response) => {
+  try {
+    const { to, clientName, documentName, signerName, signedAt } = req.body;
+    
+    if (!to || !clientName || !documentName || !signerName || !signedAt) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    const result = await resendService.sendDocumentSignedNotification({
+      to,
+      clientName,
+      documentName,
+      signerName,
+      signedAt,
+    });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Email] Document signed notification error:", error);
+    res.status(500).json({ error: error.message || "Failed to send signed notification email" });
+  }
+});
+
+app.post("/api/email/deadline-reminder", async (req: Request, res: Response) => {
+  try {
+    const { to, processNumber, clientName, deadline, description, daysRemaining } = req.body;
+    
+    if (!to || !processNumber || !clientName || !deadline || !description || daysRemaining === undefined) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    const result = await resendService.sendDeadlineReminder({
+      to,
+      processNumber,
+      clientName,
+      deadline,
+      description,
+      daysRemaining,
+    });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Email] Deadline reminder error:", error);
+    res.status(500).json({ error: error.message || "Failed to send deadline reminder email" });
+  }
+});
+
+app.post("/api/email/payment-reminder", async (req: Request, res: Response) => {
+  try {
+    const { to, clientName, amount, dueDate, description } = req.body;
+    
+    if (!to || !clientName || !amount || !dueDate || !description) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    const result = await resendService.sendPaymentReminder({
+      to,
+      clientName,
+      amount,
+      dueDate,
+      description,
+    });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Email] Payment reminder error:", error);
+    res.status(500).json({ error: error.message || "Failed to send payment reminder email" });
+  }
+});
+
+app.post("/api/email/user-invitation", async (req: Request, res: Response) => {
+  try {
+    const { to, recipientName, inviterName, permissions, acceptUrl } = req.body;
+    
+    if (!to || !recipientName || !inviterName || !permissions || !acceptUrl) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    const result = await resendService.sendUserInvitation({
+      to,
+      recipientName,
+      inviterName,
+      permissions,
+      acceptUrl,
+    });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Email] User invitation error:", error);
+    res.status(500).json({ error: error.message || "Failed to send invitation email" });
+  }
+});
+
+app.post("/api/email/task-reminder", async (req: Request, res: Response) => {
+  try {
+    const { to, taskTitle, processNumber, clientName, dueDate, daysRemaining } = req.body;
+    
+    if (!to || !taskTitle || !processNumber || !clientName || !dueDate || daysRemaining === undefined) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    const result = await resendService.sendTaskReminder({
+      to,
+      taskTitle,
+      processNumber,
+      clientName,
+      dueDate,
+      daysRemaining,
+    });
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Email] Task reminder error:", error);
+    res.status(500).json({ error: error.message || "Failed to send task reminder email" });
   }
 });
 
