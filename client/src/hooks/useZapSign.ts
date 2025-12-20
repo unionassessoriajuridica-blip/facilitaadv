@@ -97,6 +97,19 @@ export function useZapSignBuildSigner() {
   });
 }
 
+export interface AdditionalSignerParams {
+  nome: string;
+  email: string;
+  telefone?: string;
+  cpf_cnpj?: string;
+}
+
+export interface WitnessParams {
+  nome: string;
+  email: string;
+  cpf?: string;
+}
+
 export interface CreateDocumentFromProcessoParams {
   processoId: string;
   clienteNome: string;
@@ -109,6 +122,8 @@ export interface CreateDocumentFromProcessoParams {
   sendEmail?: boolean;
   sendWhatsapp?: boolean;
   dateLimitToSign?: string;
+  additionalSigners?: AdditionalSignerParams[];
+  witnesses?: WitnessParams[];
 }
 
 export function useZapSignCreateDocumentFromProcesso() {
@@ -116,7 +131,9 @@ export function useZapSignCreateDocumentFromProcesso() {
   
   return useMutation({
     mutationFn: async (params: CreateDocumentFromProcessoParams): Promise<ZapsignDocResponse> => {
-      const signer: ZapsignSigner = {
+      const signers: ZapsignSigner[] = [];
+      
+      const mainSigner: ZapsignSigner = {
         name: params.clienteNome,
         email: params.clienteEmail || '',
         phone_country: '55',
@@ -127,12 +144,51 @@ export function useZapSignCreateDocumentFromProcesso() {
         send_automatic_whatsapp: params.sendWhatsapp ?? false,
         require_cpf: true,
       };
+      signers.push(mainSigner);
+
+      if (params.additionalSigners && params.additionalSigners.length > 0) {
+        for (const addSigner of params.additionalSigners) {
+          if (addSigner.nome && addSigner.email) {
+            const signer: ZapsignSigner = {
+              name: addSigner.nome,
+              email: addSigner.email,
+              phone_country: '55',
+              phone_number: addSigner.telefone?.replace(/\D/g, '').slice(-11) || '',
+              cpf: addSigner.cpf_cnpj?.replace(/\D/g, '') || '',
+              auth_mode: 'assinaturaTela',
+              send_automatic_email: true,
+              send_automatic_whatsapp: false,
+              require_cpf: false,
+            };
+            signers.push(signer);
+          }
+        }
+      }
+
+      if (params.witnesses && params.witnesses.length > 0) {
+        for (const witness of params.witnesses) {
+          if (witness.nome && witness.email) {
+            const witnessSigner: ZapsignSigner = {
+              name: `[Testemunha] ${witness.nome}`,
+              email: witness.email,
+              phone_country: '55',
+              phone_number: '',
+              cpf: witness.cpf?.replace(/\D/g, '') || '',
+              auth_mode: 'assinaturaTela',
+              send_automatic_email: true,
+              send_automatic_whatsapp: false,
+              require_cpf: false,
+            };
+            signers.push(witnessSigner);
+          }
+        }
+      }
 
       const request: ZapsignCreateDocRequest = {
         name: params.documentName,
         url_pdf: params.pdfUrl,
         base64_pdf: params.pdfBase64,
-        signers: [signer],
+        signers: signers,
         lang: 'pt-br',
         external_id: params.processoId,
         date_limit_to_sign: params.dateLimitToSign,

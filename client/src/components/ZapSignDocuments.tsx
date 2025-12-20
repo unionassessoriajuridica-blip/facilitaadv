@@ -26,6 +26,10 @@ import {
   FileText,
   RefreshCw,
   Cloud,
+  Plus,
+  Trash2,
+  UserPlus,
+  Users,
 } from "lucide-react";
 import {
   Select,
@@ -64,6 +68,21 @@ interface ZapSignDocRecord {
   signatarios: any;
 }
 
+interface AdditionalSigner {
+  nome: string;
+  email: string;
+  telefone: string;
+  cpf_cnpj: string;
+}
+
+interface Witness {
+  nome: string;
+  email: string;
+  cpf: string;
+}
+
+const emptyWitness: Witness = { nome: "", email: "", cpf: "" };
+
 export function ZapSignDocuments({ processoId, cliente, numeroProcesso, documentos = [] }: ZapSignDocumentsProps) {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -75,6 +94,9 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
   const [zapsignDocs, setZapsignDocs] = useState<ZapSignDocRecord[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [selectedViewToken, setSelectedViewToken] = useState<string | null>(null);
+  
+  const [additionalSigners, setAdditionalSigners] = useState<AdditionalSigner[]>([]);
+  const [witnesses, setWitnesses] = useState<Witness[]>([]);
 
   const createDocMutation = useZapSignCreateDocumentFromProcesso();
   const { data: viewingDoc, isLoading: loadingViewDoc } = useZapSignDocument(selectedViewToken);
@@ -109,6 +131,47 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
     }
   };
 
+  const addAdditionalSigner = () => {
+    setAdditionalSigners([...additionalSigners, { nome: "", email: "", telefone: "", cpf_cnpj: "" }]);
+  };
+
+  const removeAdditionalSigner = (index: number) => {
+    setAdditionalSigners(additionalSigners.filter((_, i) => i !== index));
+  };
+
+  const updateAdditionalSigner = (index: number, field: keyof AdditionalSigner, value: string) => {
+    const updated = [...additionalSigners];
+    updated[index][field] = value;
+    setAdditionalSigners(updated);
+  };
+
+  const addWitness = () => {
+    if (witnesses.length < 2) {
+      setWitnesses([...witnesses, { ...emptyWitness }]);
+    }
+  };
+
+  const removeWitness = (index: number) => {
+    setWitnesses(witnesses.filter((_, i) => i !== index));
+  };
+
+  const updateWitness = (index: number, field: keyof Witness, value: string) => {
+    const updated = [...witnesses];
+    updated[index][field] = value;
+    setWitnesses(updated);
+  };
+
+  const resetForm = () => {
+    setDialogOpen(false);
+    setDocumentName("");
+    setPdfUrl("");
+    setSelectedDocument("");
+    setSendEmail(false);
+    setSendWhatsapp(false);
+    setAdditionalSigners([]);
+    setWitnesses([]);
+  };
+
   const handleSubmit = async () => {
     if (!documentName.trim()) {
       toast({
@@ -128,6 +191,9 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
       return;
     }
 
+    const validAdditionalSigners = additionalSigners.filter(s => s.nome.trim() && s.email.trim());
+    const validWitnesses = witnesses.filter(w => w.nome.trim() && w.email.trim());
+
     try {
       const result = await createDocMutation.mutateAsync({
         processoId,
@@ -139,6 +205,8 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
         pdfUrl,
         sendEmail,
         sendWhatsapp,
+        additionalSigners: validAdditionalSigners,
+        witnesses: validWitnesses,
       });
 
       const saveResponse = await fetch("/api/zapsign/db/documents", {
@@ -165,12 +233,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
         description: "O documento foi enviado para assinatura com sucesso.",
       });
 
-      setDialogOpen(false);
-      setDocumentName("");
-      setPdfUrl("");
-      setSelectedDocument("");
-      setSendEmail(false);
-      setSendWhatsapp(false);
+      resetForm();
       loadZapSignDocuments();
     } catch (error: any) {
       toast({
@@ -318,7 +381,12 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
 
                 <Card className="bg-muted/50">
                   <CardContent className="p-3">
-                    <p className="text-sm font-medium mb-2">Dados do Signatário:</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        <Users className="w-4 h-4" />
+                        Dados do Signatário Principal:
+                      </p>
+                    </div>
                     <div className="text-sm text-muted-foreground space-y-1">
                       <p>Nome: {cliente.nome}</p>
                       <p>E-mail: {cliente.email || "-"}</p>
@@ -327,6 +395,148 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                     </div>
                   </CardContent>
                 </Card>
+
+                <div className="border-t pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <UserPlus className="w-4 h-4" />
+                      <Label className="text-sm font-medium">Signatários Adicionais</Label>
+                      <span className="text-xs text-muted-foreground">(opcional)</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addAdditionalSigner}
+                      data-testid="button-add-signer"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Adicionar
+                    </Button>
+                  </div>
+                  
+                  {additionalSigners.length > 0 && (
+                    <div className="space-y-3">
+                      {additionalSigners.map((signer, index) => (
+                        <Card key={index} className="bg-muted/30">
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium">Signatário {index + 2}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeAdditionalSigner(index)}
+                                className="h-6 w-6"
+                                data-testid={`button-remove-signer-${index}`}
+                              >
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                placeholder="Nome *"
+                                value={signer.nome}
+                                onChange={(e) => updateAdditionalSigner(index, "nome", e.target.value)}
+                                className="text-sm"
+                                data-testid={`input-signer-name-${index}`}
+                              />
+                              <Input
+                                placeholder="E-mail *"
+                                value={signer.email}
+                                onChange={(e) => updateAdditionalSigner(index, "email", e.target.value)}
+                                className="text-sm"
+                                data-testid={`input-signer-email-${index}`}
+                              />
+                              <Input
+                                placeholder="Telefone"
+                                value={signer.telefone}
+                                onChange={(e) => updateAdditionalSigner(index, "telefone", e.target.value)}
+                                className="text-sm"
+                                data-testid={`input-signer-phone-${index}`}
+                              />
+                              <Input
+                                placeholder="CPF/CNPJ"
+                                value={signer.cpf_cnpj}
+                                onChange={(e) => updateAdditionalSigner(index, "cpf_cnpj", e.target.value)}
+                                className="text-sm"
+                                data-testid={`input-signer-cpf-${index}`}
+                              />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      <Label className="text-sm font-medium">Testemunhas</Label>
+                      <span className="text-xs text-muted-foreground">(opcional, max 2)</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addWitness}
+                      disabled={witnesses.length >= 2}
+                      data-testid="button-add-witness"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Adicionar
+                    </Button>
+                  </div>
+                  
+                  {witnesses.length > 0 && (
+                    <div className="space-y-3">
+                      {witnesses.map((witness, index) => (
+                        <Card key={index} className="bg-muted/30">
+                          <CardContent className="p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-medium">Testemunha {index + 1}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeWitness(index)}
+                                className="h-6 w-6"
+                                data-testid={`button-remove-witness-${index}`}
+                              >
+                                <Trash2 className="w-3 h-3 text-destructive" />
+                              </Button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <Input
+                                placeholder="Nome *"
+                                value={witness.nome}
+                                onChange={(e) => updateWitness(index, "nome", e.target.value)}
+                                className="text-sm"
+                                data-testid={`input-witness-name-${index}`}
+                              />
+                              <Input
+                                placeholder="E-mail *"
+                                value={witness.email}
+                                onChange={(e) => updateWitness(index, "email", e.target.value)}
+                                className="text-sm"
+                                data-testid={`input-witness-email-${index}`}
+                              />
+                              <Input
+                                placeholder="CPF"
+                                value={witness.cpf}
+                                onChange={(e) => updateWitness(index, "cpf", e.target.value)}
+                                className="text-sm"
+                                data-testid={`input-witness-cpf-${index}`}
+                              />
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <DialogFooter>

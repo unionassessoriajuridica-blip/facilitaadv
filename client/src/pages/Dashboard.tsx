@@ -88,6 +88,27 @@ const Dashboard = () => {
     permissionsLoading: globalAccessLoading,
   } = useGlobalAccess();
 
+  const [pendingSignaturesCount, setPendingSignaturesCount] = useState(0);
+
+  useEffect(() => {
+    const loadPendingSignatures = async () => {
+      try {
+        const { count, error } = await supabase
+          .from("zapsign_documents")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "pending");
+        
+        if (!error && count !== null) {
+          setPendingSignaturesCount(count);
+        }
+      } catch (err) {
+        console.error("Error loading pending signatures count:", err);
+      }
+    };
+    
+    loadPendingSignatures();
+  }, []);
+
   // Usar React Query com cache para dados do dashboard
   const { data: statsData, isLoading: statsLoading } = useDashboardStats();
   const { data: processosData, isLoading: processosLoading } = useDashboardProcessos();
@@ -461,14 +482,21 @@ const Dashboard = () => {
 
           {hasPermission("facilisign") && (
             <div
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-4 text-white cursor-pointer hover:from-slate-700 hover:to-slate-800 transition-all"
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-4 text-white cursor-pointer hover:from-slate-700 hover:to-slate-800 transition-all relative"
               onClick={() => navigate("/facilisign")}
               data-testid="card-facilisign"
             >
+              {pendingSignaturesCount > 0 && (
+                <div className="absolute -top-2 -right-2 bg-yellow-500 text-slate-900 rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold" data-testid="badge-pending-signatures">
+                  {pendingSignaturesCount}
+                </div>
+              )}
               <div className="flex flex-col items-center text-center">
                 <PenTool className="w-8 h-8 text-indigo-400 mb-2" />
                 <h3 className="font-semibold text-sm">FaciliSign</h3>
-                <p className="text-xs text-gray-400">Assinatura digital</p>
+                <p className="text-xs text-gray-400">
+                  {pendingSignaturesCount > 0 ? `${pendingSignaturesCount} pendente(s)` : "Assinatura digital"}
+                </p>
               </div>
             </div>
           )}
