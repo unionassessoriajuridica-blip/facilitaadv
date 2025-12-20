@@ -227,12 +227,55 @@ pm2 restart facilitaadv
 ```
 
 ### Atualizar aplicacao
+
+Quando voce fizer alteracoes no codigo (via Replit ou localmente) e enviar ao GitHub, execute estes comandos na VPS para atualizar:
+
 ```bash
 cd /var/www/facilitaadv
 git pull origin main
 npm install
 npm run build
 pm2 restart facilitaadv
+```
+
+**Explicacao de cada comando:**
+- `git pull origin main` - Baixa as alteracoes mais recentes do GitHub
+- `npm install` - Instala novas dependencias (se houver alteracoes no package.json)
+- `npm run build` - Recompila o frontend para producao
+- `pm2 restart facilitaadv` - Reinicia a aplicacao com as novas alteracoes
+
+**Dica:** Voce pode criar um script para automatizar:
+
+```bash
+nano /var/www/facilitaadv/atualizar.sh
+```
+
+Cole o conteudo:
+
+```bash
+#!/bin/bash
+cd /var/www/facilitaadv
+echo "Baixando alteracoes do GitHub..."
+git pull origin main
+echo "Instalando dependencias..."
+npm install
+echo "Compilando aplicacao..."
+npm run build
+echo "Reiniciando aplicacao..."
+pm2 restart facilitaadv
+echo "Atualizacao concluida!"
+```
+
+Salve e de permissao de execucao:
+
+```bash
+chmod +x /var/www/facilitaadv/atualizar.sh
+```
+
+Depois, para atualizar basta executar:
+
+```bash
+/var/www/facilitaadv/atualizar.sh
 ```
 
 ### Ver logs do Nginx
