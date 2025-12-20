@@ -282,7 +282,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                 Enviar para Assinatura
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Enviar Documento para Assinatura</DialogTitle>
                 <DialogDescription>
