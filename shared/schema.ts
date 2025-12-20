@@ -173,6 +173,24 @@ export const userRoles = pgTable("user_roles", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const zapsignDocuments = pgTable("zapsign_documents", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  processoId: uuid("processo_id").references(() => processos.id),
+  clienteId: uuid("cliente_id").references(() => clientes.id),
+  nome: text("nome").notNull(),
+  zapsignToken: text("zapsign_token"),
+  zapsignOpenId: integer("zapsign_open_id"),
+  status: text("status").default("pending"),
+  originalFileUrl: text("original_file_url"),
+  signedFileUrl: text("signed_file_url"),
+  signatarios: jsonb("signatarios"),
+  externalId: text("external_id"),
+  dateLimitToSign: timestamp("date_limit_to_sign"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClienteSchema = createInsertSchema(clientes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProcessoSchema = createInsertSchema(processos).omit({ id: true, createdAt: true, updatedAt: true });
@@ -192,3 +210,56 @@ export type InsertChatConversation = z.infer<typeof insertChatConversationSchema
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type InsertNotificacao = z.infer<typeof insertNotificacaoSchema>;
 export type Notificacao = typeof notificacoes.$inferSelect;
+
+export const insertZapsignDocumentSchema = createInsertSchema(zapsignDocuments).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertZapsignDocument = z.infer<typeof insertZapsignDocumentSchema>;
+export type ZapsignDocument = typeof zapsignDocuments.$inferSelect;
+
+export interface ZapsignSigner {
+  name: string;
+  email?: string;
+  phone_country?: string;
+  phone_number?: string;
+  cpf?: string;
+  auth_mode?: string;
+  send_automatic_email?: boolean;
+  send_automatic_whatsapp?: boolean;
+  require_cpf?: boolean;
+}
+
+export interface ZapsignCreateDocRequest {
+  name: string;
+  url_pdf?: string;
+  base64_pdf?: string;
+  signers: ZapsignSigner[];
+  lang?: string;
+  external_id?: string;
+  date_limit_to_sign?: string;
+  disable_signer_emails?: boolean;
+  folder_path?: string;
+}
+
+export interface ZapsignSignerResponse {
+  token: string;
+  sign_url: string;
+  status: string;
+  name: string;
+  email: string;
+  phone_country: string;
+  phone_number: string;
+  times_viewed: number;
+  last_view_at: string | null;
+  signed_at: string | null;
+}
+
+export interface ZapsignDocResponse {
+  open_id: number;
+  token: string;
+  status: string;
+  name: string;
+  original_file: string;
+  signed_file: string | null;
+  created_at: string;
+  last_update_at: string;
+  signers: ZapsignSignerResponse[];
+}

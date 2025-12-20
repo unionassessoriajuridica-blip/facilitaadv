@@ -1,6 +1,8 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { setupVite, serveStatic, log } from "./vite";
+import * as zapsignService from "./services/zapsignService";
+import type { ZapsignCreateDocRequest } from "@shared/schema";
 
 const app = express();
 app.use(express.json());
@@ -10,6 +12,75 @@ app.use(express.urlencoded({ extended: false }));
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 
+// ZapSign API Routes (server-side to protect API token)
+app.post("/api/zapsign/documents", async (req: Request, res: Response) => {
+  try {
+    const docRequest: ZapsignCreateDocRequest = req.body;
+    
+    if (!docRequest.name || !docRequest.signers || docRequest.signers.length === 0) {
+      return res.status(400).json({ error: "Name and at least one signer are required" });
+    }
+    
+    if (!docRequest.url_pdf && !docRequest.base64_pdf) {
+      return res.status(400).json({ error: "Either url_pdf or base64_pdf is required" });
+    }
+    
+    const result = await zapsignService.createDocument(docRequest);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[ZapSign] Create document error:", error);
+    res.status(500).json({ error: error.message || "Failed to create document" });
+  }
+});
+
+app.get("/api/zapsign/documents/:token", async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    const result = await zapsignService.getDocument(token);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[ZapSign] Get document error:", error);
+    res.status(500).json({ error: error.message || "Failed to get document" });
+  }
+});
+
+app.get("/api/zapsign/documents", async (req: Request, res: Response) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const result = await zapsignService.listDocuments(page);
+    res.json(result);
+  } catch (error: any) {
+    console.error("[ZapSign] List documents error:", error);
+    res.status(500).json({ error: error.message || "Failed to list documents" });
+  }
+});
+
+app.delete("/api/zapsign/documents/:token", async (req: Request, res: Response) => {
+  try {
+    const { token } = req.params;
+    await zapsignService.deleteDocument(token);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[ZapSign] Delete document error:", error);
+    res.status(500).json({ error: error.message || "Failed to delete document" });
+  }
+});
+
+app.post("/api/zapsign/build-signer", async (req: Request, res: Response) => {
+  try {
+    const { cliente, options } = req.body;
+    if (!cliente || !cliente.nome) {
+      return res.status(400).json({ error: "Cliente with nome is required" });
+    }
+    const signer = zapsignService.buildSignerFromCliente(cliente, options);
+    res.json(signer);
+  } catch (error: any) {
+    console.error("[ZapSign] Build signer error:", error);
+    res.status(500).json({ error: error.message || "Failed to build signer" });
+  }
+});
+
+// Proxy para Edge Functions do Supabase (evita problemas de CORS)
 app.all("/api/supabase/functions/:functionName", async (req: Request, res: Response) => {
   try {
     const { functionName } = req.params;

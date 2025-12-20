@@ -27,8 +27,10 @@ import {
   Gavel,
   Loader2,
   CheckSquare,
+  FileSignature,
 } from "lucide-react";
 import { ProcessoTarefas } from "@/components/ProcessoTarefas";
+import { ZapSignDocuments } from "@/components/ZapSignDocuments";
 import { datajudService, DatajudMovimento } from "@/services/datajudService";
 import { useToast } from "@/hooks/use-toast.ts";
 import { supabase } from "@/integrations/supabase/client.ts";
@@ -352,7 +354,7 @@ const ProcessView = () => {
         <Card>
           <CardContent className="p-6">
             <Tabs defaultValue="dados-pessoais" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger
                   value="dados-pessoais"
                   className="flex items-center gap-2"
@@ -372,7 +374,7 @@ const ProcessView = () => {
                   className="flex items-center gap-2"
                 >
                   <Users className="w-4 h-4" />
-                  Responsável Financeiro
+                  Responsável
                 </TabsTrigger>
                 <TabsTrigger
                   value="tarefas"
@@ -390,12 +392,20 @@ const ProcessView = () => {
                   Arquivos ({documentos.length})
                 </TabsTrigger>
                 <TabsTrigger
+                  value="assinatura"
+                  className="flex items-center gap-2"
+                  data-testid="tab-assinatura"
+                >
+                  <FileSignature className="w-4 h-4" />
+                  Assinatura
+                </TabsTrigger>
+                <TabsTrigger
                   value="info-processo"
                   className="flex items-center gap-2"
                   data-testid="tab-info-processo"
                 >
                   <Gavel className="w-4 h-4" />
-                  Info. do Processo
+                  Info. Processo
                 </TabsTrigger>
               </TabsList>
 
@@ -763,6 +773,15 @@ const ProcessView = () => {
                     </p>
                   )}
                 </div>
+              </TabsContent>
+
+              <TabsContent value="assinatura" className="mt-6">
+                <ZapSignDocuments
+                  processoId={id!}
+                  cliente={cliente}
+                  numeroProcesso={processo.numero_processo}
+                  documentos={documentos}
+                />
               </TabsContent>
 
               <TabsContent value="info-processo" className="mt-6">
