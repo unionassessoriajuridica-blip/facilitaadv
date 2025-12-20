@@ -28,7 +28,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useZapSignCreateDocumentFromProcesso, useZapSignDocument } from "@/hooks/useZapSign";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ZapSignDocumentsProps {
   processoId: string;
@@ -74,13 +73,11 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
   const loadZapSignDocuments = async () => {
     setLoadingDocs(true);
     try {
-      const { data, error } = await (supabase as any)
-        .from("zapsign_documents")
-        .select("*")
-        .eq("processo_id", processoId)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
+      const response = await fetch(`/api/zapsign/db/documents/${processoId}`);
+      if (!response.ok) {
+        throw new Error("Failed to load documents");
+      }
+      const data = await response.json();
       setZapsignDocs((data as ZapSignDocRecord[]) || []);
     } catch (error) {
       console.error("Error loading ZapSign documents:", error);
@@ -131,19 +128,23 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
         sendWhatsapp,
       });
 
-      const { error: insertError } = await (supabase as any).from("zapsign_documents").insert({
-        processo_id: processoId,
-        nome: documentName,
-        zapsign_token: result.token,
-        zapsign_open_id: result.open_id,
-        status: result.status,
-        original_file_url: result.original_file,
-        signatarios: result.signers,
-        external_id: processoId,
+      const saveResponse = await fetch("/api/zapsign/db/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          processo_id: processoId,
+          nome: documentName,
+          zapsign_token: result.token,
+          zapsign_open_id: result.open_id,
+          status: result.status,
+          original_file_url: result.original_file,
+          signatarios: result.signers,
+          external_id: processoId,
+        }),
       });
 
-      if (insertError) {
-        console.error("Error saving to database:", insertError);
+      if (!saveResponse.ok) {
+        console.error("Error saving to database:", await saveResponse.text());
       }
 
       toast({
@@ -309,7 +310,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
               </div>
 
               <DialogFooter>
-                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setDialogOpen(false)} data-testid="button-cancel-signature">
                   Cancelar
                 </Button>
                 <Button
@@ -451,7 +452,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                   </div>
                 </div>
                 {viewingDoc.signed_file && (
-                  <Button asChild className="w-full">
+                  <Button asChild className="w-full" data-testid="button-download-signed">
                     <a href={viewingDoc.signed_file} target="_blank" rel="noopener noreferrer">
                       <FileText className="w-4 h-4 mr-2" />
                       Baixar Documento Assinado

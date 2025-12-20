@@ -66,6 +66,106 @@ app.delete("/api/zapsign/documents/:token", async (req: Request, res: Response) 
   }
 });
 
+// Persistence endpoints for ZapSign documents (via Supabase with service role)
+app.post("/api/zapsign/db/documents", async (req: Request, res: Response) => {
+  try {
+    const docData = req.body;
+    if (!docData.processo_id || !docData.nome) {
+      return res.status(400).json({ error: "processo_id and nome are required" });
+    }
+    
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/zapsign_documents`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_ANON_KEY || "",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        "Prefer": "return=representation",
+      },
+      body: JSON.stringify({
+        ...docData,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Supabase error: ${errorText}`);
+    }
+    
+    const result = await response.json();
+    res.json(result[0] || result);
+  } catch (error: any) {
+    console.error("[ZapSign DB] Save document error:", error);
+    res.status(500).json({ error: error.message || "Failed to save document" });
+  }
+});
+
+app.get("/api/zapsign/db/documents/:processoId", async (req: Request, res: Response) => {
+  try {
+    const { processoId } = req.params;
+    
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/zapsign_documents?processo_id=eq.${processoId}&order=created_at.desc`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY || "",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Supabase error: ${errorText}`);
+    }
+    
+    const result = await response.json();
+    res.json(result);
+  } catch (error: any) {
+    console.error("[ZapSign DB] Get documents error:", error);
+    res.status(500).json({ error: error.message || "Failed to get documents" });
+  }
+});
+
+app.patch("/api/zapsign/db/documents/:docId", async (req: Request, res: Response) => {
+  try {
+    const { docId } = req.params;
+    const updateData = req.body;
+    
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/zapsign_documents?id=eq.${docId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": SUPABASE_ANON_KEY || "",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "Prefer": "return=representation",
+        },
+        body: JSON.stringify({
+          ...updateData,
+          updated_at: new Date().toISOString(),
+        }),
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Supabase error: ${errorText}`);
+    }
+    
+    const result = await response.json();
+    res.json(result[0] || result);
+  } catch (error: any) {
+    console.error("[ZapSign DB] Update document error:", error);
+    res.status(500).json({ error: error.message || "Failed to update document" });
+  }
+});
+
 app.post("/api/zapsign/build-signer", async (req: Request, res: Response) => {
   try {
     const { cliente, options } = req.body;
