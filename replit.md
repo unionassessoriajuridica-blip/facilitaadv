@@ -122,6 +122,45 @@ Preferred communication style: Simple, everyday language.
 - `supabase/migrations/20251220_add_zapsign_webhook_fields.sql` - Webhook fields (signed_file_url, last_signer_*, signed_at)
 - `supabase/migrations/README_ZAPSIGN.md` - Instructions
 
+### Email Notifications (Resend via Replit Connectors)
+- **Service**: `server/services/resendService.ts` - Email sending with templates
+- **Frontend Service**: `client/src/services/emailService.ts` - API client
+- **Connection**: Resend API via Replit Connectors (automatic key management)
+- **From Email**: Configured in Resend connector settings
+
+**Automatic Email Notifications**:
+- **Document signature request**: Sent when ZapSign document is created (to signers)
+- **Document signed**: Sent when webhook receives signature event (to document owner)
+
+**Email API Endpoints** (`server/index.ts`):
+- `POST /api/email/send` - Generic email sending
+- `POST /api/email/document-signature` - Signature request notification
+- `POST /api/email/document-signed` - Signed document notification
+- `POST /api/email/deadline-reminder` - Process deadline reminder
+- `POST /api/email/payment-reminder` - Payment due reminder
+- `POST /api/email/user-invitation` - User invitation email
+- `POST /api/email/task-reminder` - Task reminder notification
+
+**Batch Notification Endpoints** (require authentication):
+- `POST /api/notifications/send-deadline-reminders` - Send reminders for upcoming deadlines
+- `POST /api/notifications/send-payment-reminders` - Send payment reminders to clients
+- `POST /api/notifications/send-task-reminders` - Send task reminders
+- `POST /api/notifications/send-all-reminders` - Send all reminder types at once
+
+**Batch Notification Parameters**:
+```json
+{
+  "daysAhead": 3,        // Days to look ahead (default: 3)
+  "notifyEmail": "advogado@email.com"  // Required for deadline/task reminders
+}
+```
+
+**Email Templates**: Professional HTML templates with FacilitaAdv branding
+- Gradient header with logo
+- Responsive design
+- Urgency indicators for deadlines
+- Action buttons for signatures
+
 ### Communication
 - **WhatsApp Integration**: Via external API for sending billing messages
 - **Twilio**: WhatsApp message sending (Supabase edge function)

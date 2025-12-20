@@ -103,6 +103,46 @@ export async function sendTaskReminder(data: TaskReminderEmailData) {
   return apiRequest('/task-reminder', data);
 }
 
+// Batch notification functions (require authentication)
+export interface BatchNotificationOptions {
+  daysAhead?: number;
+  notifyEmail: string;
+}
+
+async function authenticatedRequest<T>(endpoint: string, data: object, token: string): Promise<T> {
+  const response = await fetch(`/api/notifications${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+    throw new Error(error.error || `Failed to send notifications: ${response.statusText}`);
+  }
+
+  return response.json();
+}
+
+export async function sendDeadlineReminders(options: BatchNotificationOptions, token: string) {
+  return authenticatedRequest('/send-deadline-reminders', options, token);
+}
+
+export async function sendPaymentReminders(options: { daysAhead?: number }, token: string) {
+  return authenticatedRequest('/send-payment-reminders', options, token);
+}
+
+export async function sendTaskReminders(options: BatchNotificationOptions, token: string) {
+  return authenticatedRequest('/send-task-reminders', options, token);
+}
+
+export async function sendAllReminders(options: BatchNotificationOptions, token: string) {
+  return authenticatedRequest('/send-all-reminders', options, token);
+}
+
 export const emailService = {
   send: sendEmail,
   documentSignatureRequest: sendDocumentSignatureRequest,
@@ -111,6 +151,12 @@ export const emailService = {
   paymentReminder: sendPaymentReminder,
   userInvitation: sendUserInvitation,
   taskReminder: sendTaskReminder,
+  batch: {
+    deadlineReminders: sendDeadlineReminders,
+    paymentReminders: sendPaymentReminders,
+    taskReminders: sendTaskReminders,
+    allReminders: sendAllReminders,
+  },
 };
 
 export default emailService;

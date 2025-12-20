@@ -19,6 +19,7 @@ const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 app.post("/api/zapsign/documents", async (req: Request, res: Response) => {
   try {
     const docRequest: ZapsignCreateDocRequest = req.body;
+    const { clientName, notifyEmail } = req.body;
     
     if (!docRequest.name || !docRequest.signers || docRequest.signers.length === 0) {
       return res.status(400).json({ error: "Name and at least one signer are required" });
@@ -29,6 +30,27 @@ app.post("/api/zapsign/documents", async (req: Request, res: Response) => {
     }
     
     const result = await zapsignService.createDocument(docRequest);
+    
+    // Send email notification to signers (if enabled and email available)
+    if (notifyEmail !== false && result.signers && result.signers.length > 0) {
+      for (const signer of result.signers) {
+        if (signer.email && signer.sign_url) {
+          try {
+            await resendService.sendDocumentSignatureRequest({
+              to: signer.email,
+              clientName: clientName || docRequest.name,
+              documentName: docRequest.name,
+              signerName: signer.name,
+              signatureUrl: signer.sign_url,
+            });
+            console.log(`[ZapSign] Email notification sent to ${signer.email}`);
+          } catch (emailError) {
+            console.error(`[ZapSign] Failed to send email to ${signer.email}:`, emailError);
+          }
+        }
+      }
+    }
+    
     res.json(result);
   } catch (error: any) {
     console.error("[ZapSign] Create document error:", error);
@@ -335,7 +357,7 @@ app.post("/api/zapsign/webhook", async (req: Request, res: Response) => {
       
       // Update document in our database
       try {
-        const response = await fetch(
+        const updateResponse = await fetch(
           `${SUPABASE_URL}/rest/v1/zapsign_documents?zapsign_token=eq.${docToken}`,
           {
             method: "PATCH",
@@ -343,7 +365,6 @@ app.post("/api/zapsign/webhook", async (req: Request, res: Response) => {
               "Content-Type": "application/json",
               "apikey": SUPABASE_ANON_KEY || "",
               "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
-              "Prefer": "return=representation",
             },
             body: JSON.stringify({
               status: docStatus,
@@ -356,10 +377,52 @@ app.post("/api/zapsign/webhook", async (req: Request, res: Response) => {
           }
         );
         
-        if (response.ok) {
+        if (updateResponse.ok) {
           console.log("[ZapSign Webhook] Document updated successfully:", docToken);
+          
+          // Fetch document with related data for notification
+          const getResponse = await fetch(
+            `${SUPABASE_URL}/rest/v1/zapsign_documents?zapsign_token=eq.${docToken}&select=*,processos(numero_processo,cliente_id,clientes(nome,email))`,
+            {
+              headers: {
+                "apikey": SUPABASE_ANON_KEY || "",
+                "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+              },
+            }
+          );
+          
+          if (getResponse.ok) {
+            const docs = await getResponse.json();
+            
+            // Send email notification to document owner/lawyer
+            if (docs && docs.length > 0) {
+              const doc = docs[0];
+              const clientName = doc.processos?.clientes?.nome || "Cliente";
+              const signedAt = signerWhoSigned?.signed_at 
+                ? new Date(signerWhoSigned.signed_at).toLocaleString("pt-BR")
+                : new Date().toLocaleString("pt-BR");
+              
+              // Get user email from notify_email field or client email
+              const notifyEmail = doc.notify_email || doc.processos?.clientes?.email;
+              
+              if (notifyEmail) {
+                try {
+                  await resendService.sendDocumentSignedNotification({
+                    to: notifyEmail,
+                    clientName: clientName,
+                    documentName: doc.nome || payload.name || "Documento",
+                    signerName: signerWhoSigned?.name || "Assinante",
+                    signedAt: signedAt,
+                  });
+                  console.log(`[ZapSign Webhook] Signed notification sent to ${notifyEmail}`);
+                } catch (emailError) {
+                  console.error("[ZapSign Webhook] Failed to send signed notification:", emailError);
+                }
+              }
+            }
+          }
         } else {
-          const errorText = await response.text();
+          const errorText = await updateResponse.text();
           console.error("[ZapSign Webhook] Failed to update document:", errorText);
         }
       } catch (updateError) {
@@ -643,6 +706,367 @@ app.post("/api/email/task-reminder", async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("[Email] Task reminder error:", error);
     res.status(500).json({ error: error.message || "Failed to send task reminder email" });
+  }
+});
+
+// Batch notification endpoints - for sending reminders to multiple recipients
+// These endpoints require authentication and check the database for items expiring soon
+// Authentication middleware for notification endpoints
+const requireAuth = async (req: Request, res: Response, next: Function) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+  
+  const token = authHeader.substring(7);
+  
+  // Verify token with Supabase
+  try {
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "apikey": SUPABASE_ANON_KEY || "",
+      },
+    });
+    
+    if (!response.ok) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+    
+    const user = await response.json();
+    (req as any).user = user;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: "Authentication failed" });
+  }
+};
+
+// Send deadline reminders for processes with upcoming deadlines
+app.post("/api/notifications/send-deadline-reminders", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { daysAhead = 3, notifyEmail } = req.body;
+    
+    if (!notifyEmail) {
+      return res.status(400).json({ error: "notifyEmail is required" });
+    }
+    
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + daysAhead);
+    
+    // Fetch processes with deadlines in the next X days
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/processos?prazo=gte.${today.toISOString().split('T')[0]}&prazo=lte.${futureDate.toISOString().split('T')[0]}&status=eq.ATIVO&select=id,numero_processo,prazo,observacoes,clientes(nome,email)`,
+      {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY || "",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error("Failed to fetch processes with deadlines");
+    }
+    
+    const processes = await response.json();
+    const emailsSent: string[] = [];
+    const errors: string[] = [];
+    
+    for (const processo of processes) {
+      const prazoDate = new Date(processo.prazo);
+      const daysRemaining = Math.ceil((prazoDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      try {
+        await resendService.sendDeadlineReminder({
+          to: notifyEmail,
+          processNumber: processo.numero_processo || "Sem numero",
+          clientName: processo.clientes?.nome || "Cliente",
+          deadline: prazoDate.toLocaleDateString("pt-BR"),
+          description: processo.observacoes || "Prazo processual",
+          daysRemaining,
+        });
+        emailsSent.push(processo.numero_processo);
+      } catch (err: any) {
+        errors.push(`${processo.numero_processo}: ${err.message}`);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      processesFound: processes.length,
+      emailsSent: emailsSent.length,
+      emails: emailsSent,
+      errors 
+    });
+  } catch (error: any) {
+    console.error("[Notifications] Deadline reminders error:", error);
+    res.status(500).json({ error: error.message || "Failed to send deadline reminders" });
+  }
+});
+
+// Send payment reminders for upcoming financial entries
+app.post("/api/notifications/send-payment-reminders", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { daysAhead = 3 } = req.body;
+    
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + daysAhead);
+    
+    // Fetch upcoming payments (recebimentos pendentes)
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/financeiro?data_vencimento=gte.${today.toISOString().split('T')[0]}&data_vencimento=lte.${futureDate.toISOString().split('T')[0]}&status=eq.pendente&tipo=eq.recebimento&select=*,clientes(nome,email)`,
+      {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY || "",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error("Failed to fetch pending payments");
+    }
+    
+    const payments = await response.json();
+    const emailsSent: string[] = [];
+    const errors: string[] = [];
+    
+    for (const payment of payments) {
+      const clientEmail = payment.clientes?.email;
+      if (!clientEmail) continue;
+      
+      try {
+        await resendService.sendPaymentReminder({
+          to: clientEmail,
+          clientName: payment.clientes?.nome || "Cliente",
+          amount: `R$ ${parseFloat(payment.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+          dueDate: new Date(payment.data_vencimento).toLocaleDateString("pt-BR"),
+          description: payment.descricao || "Honorarios advocaticios",
+        });
+        emailsSent.push(clientEmail);
+      } catch (err: any) {
+        errors.push(`${clientEmail}: ${err.message}`);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      paymentsFound: payments.length,
+      emailsSent: emailsSent.length,
+      emails: emailsSent,
+      errors 
+    });
+  } catch (error: any) {
+    console.error("[Notifications] Payment reminders error:", error);
+    res.status(500).json({ error: error.message || "Failed to send payment reminders" });
+  }
+});
+
+// Send task reminders for pending tasks with upcoming due dates
+app.post("/api/notifications/send-task-reminders", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { daysAhead = 3, notifyEmail } = req.body;
+    
+    if (!notifyEmail) {
+      return res.status(400).json({ error: "notifyEmail is required" });
+    }
+    
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + daysAhead);
+    
+    // Fetch pending tasks via Edge Function proxy
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/tasks?status=eq.pending&due_date=gte.${today.toISOString().split('T')[0]}&due_date=lte.${futureDate.toISOString().split('T')[0]}&select=*,processos(numero_processo,clientes(nome))`,
+      {
+        headers: {
+          "apikey": SUPABASE_ANON_KEY || "",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+    
+    if (!response.ok) {
+      throw new Error("Failed to fetch pending tasks");
+    }
+    
+    const tasks = await response.json();
+    const emailsSent: string[] = [];
+    const errors: string[] = [];
+    
+    for (const task of tasks) {
+      const dueDate = new Date(task.due_date);
+      const daysRemaining = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      
+      try {
+        await resendService.sendTaskReminder({
+          to: notifyEmail,
+          taskTitle: task.title || "Tarefa",
+          processNumber: task.processos?.numero_processo || "Sem processo",
+          clientName: task.processos?.clientes?.nome || "Cliente",
+          dueDate: dueDate.toLocaleDateString("pt-BR"),
+          daysRemaining,
+        });
+        emailsSent.push(task.title);
+      } catch (err: any) {
+        errors.push(`${task.title}: ${err.message}`);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      tasksFound: tasks.length,
+      emailsSent: emailsSent.length,
+      tasks: emailsSent,
+      errors 
+    });
+  } catch (error: any) {
+    console.error("[Notifications] Task reminders error:", error);
+    res.status(500).json({ error: error.message || "Failed to send task reminders" });
+  }
+});
+
+// Combined endpoint to send all reminders at once
+app.post("/api/notifications/send-all-reminders", requireAuth, async (req: Request, res: Response) => {
+  try {
+    const { daysAhead = 3, notifyEmail } = req.body;
+    
+    if (!notifyEmail) {
+      return res.status(400).json({ error: "notifyEmail is required" });
+    }
+    
+    const results = {
+      deadlines: { sent: 0, errors: [] as string[] },
+      payments: { sent: 0, errors: [] as string[] },
+      tasks: { sent: 0, errors: [] as string[] },
+    };
+    
+    const today = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(today.getDate() + daysAhead);
+    
+    // 1. Process deadlines
+    try {
+      const deadlineResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/processos?prazo=gte.${today.toISOString().split('T')[0]}&prazo=lte.${futureDate.toISOString().split('T')[0]}&status=eq.ATIVO&select=id,numero_processo,prazo,observacoes,clientes(nome)`,
+        {
+          headers: {
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+        }
+      );
+      
+      if (deadlineResponse.ok) {
+        const processes = await deadlineResponse.json();
+        for (const processo of processes) {
+          const prazoDate = new Date(processo.prazo);
+          const daysRemaining = Math.ceil((prazoDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          try {
+            await resendService.sendDeadlineReminder({
+              to: notifyEmail,
+              processNumber: processo.numero_processo || "Sem numero",
+              clientName: processo.clientes?.nome || "Cliente",
+              deadline: prazoDate.toLocaleDateString("pt-BR"),
+              description: processo.observacoes || "Prazo processual",
+              daysRemaining,
+            });
+            results.deadlines.sent++;
+          } catch (err: any) {
+            results.deadlines.errors.push(err.message);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[Notifications] Deadline fetch error:", e);
+    }
+    
+    // 2. Process payments (send to clients)
+    try {
+      const paymentResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/financeiro?data_vencimento=gte.${today.toISOString().split('T')[0]}&data_vencimento=lte.${futureDate.toISOString().split('T')[0]}&status=eq.pendente&tipo=eq.recebimento&select=*,clientes(nome,email)`,
+        {
+          headers: {
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+        }
+      );
+      
+      if (paymentResponse.ok) {
+        const payments = await paymentResponse.json();
+        for (const payment of payments) {
+          const clientEmail = payment.clientes?.email;
+          if (!clientEmail) continue;
+          try {
+            await resendService.sendPaymentReminder({
+              to: clientEmail,
+              clientName: payment.clientes?.nome || "Cliente",
+              amount: `R$ ${parseFloat(payment.valor).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+              dueDate: new Date(payment.data_vencimento).toLocaleDateString("pt-BR"),
+              description: payment.descricao || "Honorarios advocaticios",
+            });
+            results.payments.sent++;
+          } catch (err: any) {
+            results.payments.errors.push(err.message);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[Notifications] Payment fetch error:", e);
+    }
+    
+    // 3. Process tasks
+    try {
+      const taskResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/tasks?status=eq.pending&due_date=gte.${today.toISOString().split('T')[0]}&due_date=lte.${futureDate.toISOString().split('T')[0]}&select=*,processos(numero_processo,clientes(nome))`,
+        {
+          headers: {
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+        }
+      );
+      
+      if (taskResponse.ok) {
+        const tasks = await taskResponse.json();
+        for (const task of tasks) {
+          const dueDate = new Date(task.due_date);
+          const daysRemaining = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          try {
+            await resendService.sendTaskReminder({
+              to: notifyEmail,
+              taskTitle: task.title || "Tarefa",
+              processNumber: task.processos?.numero_processo || "Sem processo",
+              clientName: task.processos?.clientes?.nome || "Cliente",
+              dueDate: dueDate.toLocaleDateString("pt-BR"),
+              daysRemaining,
+            });
+            results.tasks.sent++;
+          } catch (err: any) {
+            results.tasks.errors.push(err.message);
+          }
+        }
+      }
+    } catch (e) {
+      console.error("[Notifications] Task fetch error:", e);
+    }
+    
+    res.json({ 
+      success: true, 
+      summary: {
+        deadlinesSent: results.deadlines.sent,
+        paymentsSent: results.payments.sent,
+        tasksSent: results.tasks.sent,
+        totalSent: results.deadlines.sent + results.payments.sent + results.tasks.sent,
+      },
+      details: results,
+    });
+  } catch (error: any) {
+    console.error("[Notifications] Send all reminders error:", error);
+    res.status(500).json({ error: error.message || "Failed to send reminders" });
   }
 });
 
