@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { googleCalendarSecure } from "@/services/googleCalendarSecureService";
-import { format, isToday, isTomorrow, isPast, addDays, parseISO } from "date-fns";
+import { format, isToday, isTomorrow, isPast, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Sheet,
@@ -54,8 +54,6 @@ export function AlertasCenter() {
     
     setLoading(true);
     const allAlerts: AlertItem[] = [];
-    const today = new Date();
-    const nextWeek = addDays(today, 7);
 
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -74,29 +72,32 @@ export function AlertasCenter() {
             data.alerts.forEach((alert: any) => {
               try {
                 const dateStr = alert.date;
-                let alertDate: Date;
+                let alertDate: Date | undefined;
                 
-                if (dateStr.includes("T")) {
-                  alertDate = new Date(dateStr);
-                } else {
-                  alertDate = parseISO(dateStr);
+                if (dateStr) {
+                  if (dateStr.includes("T")) {
+                    alertDate = new Date(dateStr);
+                  } else {
+                    alertDate = parseISO(dateStr);
+                  }
+                  if (isNaN(alertDate.getTime())) {
+                    alertDate = undefined;
+                  }
                 }
 
-                if (!isNaN(alertDate.getTime())) {
-                  allAlerts.push({
-                    id: alert.id,
-                    type: alert.type as "tarefa" | "prazo" | "evento" | "assinatura",
-                    title: alert.title,
-                    description: alert.description,
-                    date: alertDate,
-                    priority: alert.priority,
-                    status: alert.status,
-                    processoId: alert.processoId,
-                    processoNumero: alert.processoNumero,
-                  });
-                }
+                allAlerts.push({
+                  id: alert.id,
+                  type: alert.type as "tarefa" | "prazo" | "evento" | "assinatura",
+                  title: alert.title,
+                  description: alertDate ? alert.description : `${alert.description || ""} (Sem data definida)`.trim(),
+                  date: alertDate || new Date(9999, 11, 31),
+                  priority: alert.priority,
+                  status: alert.status,
+                  processoId: alert.processoId,
+                  processoNumero: alert.processoNumero,
+                });
               } catch (e) {
-                console.warn("Invalid alert date:", alert.id);
+                console.warn("Invalid alert:", alert.id);
               }
             });
           }
@@ -106,7 +107,7 @@ export function AlertasCenter() {
       try {
         const isConnected = await googleCalendarSecure.isConnected();
         if (isConnected) {
-          const events = await googleCalendarSecure.listEvents(20);
+          const events = await googleCalendarSecure.listEvents(50);
           events.forEach((event: any) => {
             try {
               let eventDate: Date;
@@ -134,7 +135,7 @@ export function AlertasCenter() {
                 return;
               }
               
-              if (!isNaN(eventDate.getTime()) && eventDate <= nextWeek) {
+              if (!isNaN(eventDate.getTime())) {
                 allAlerts.push({
                   id: `evento-${event.id}`,
                   type: "evento",
@@ -178,9 +179,14 @@ export function AlertasCenter() {
     }
   }, [user, loadAlerts]);
 
+  const isNoDate = (date: Date) => date.getFullYear() >= 9999;
+  
   const getUrgencyBadge = (date: Date, type: string) => {
     if (type === "assinatura") {
       return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Pendente</Badge>;
+    }
+    if (isNoDate(date)) {
+      return <Badge variant="secondary">Sem data</Badge>;
     }
     if (isPast(date) && !isToday(date)) {
       return <Badge className="bg-red-500/10 text-red-600 border-red-500/20">Atrasado</Badge>;

@@ -182,7 +182,7 @@ app.post("/api/zapsign/build-signer", async (req: Request, res: Response) => {
   }
 });
 
-// Alerts API - consolidated endpoint for all alert types
+// Alerts API - consolidated endpoint for all alert types (shows ALL pending items)
 app.get("/api/alerts", async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization;
@@ -191,14 +191,11 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
     }
 
     const alerts: any[] = [];
-    const today = new Date();
-    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const nextWeekStr = nextWeek.toISOString().split("T")[0];
 
-    // Fetch pending tasks
+    // Fetch ALL pending tasks (no date filter)
     try {
       const tasksResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/tasks?status=neq.completed&due_date=lte.${nextWeekStr}&order=due_date.asc&select=*,processos(numero_processo)`,
+        `${SUPABASE_URL}/rest/v1/tasks?status=neq.completed&order=due_date.asc&select=*,processos(numero_processo)`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -210,29 +207,27 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
       if (tasksResponse.ok) {
         const tasks = await tasksResponse.json();
         tasks.forEach((task: any) => {
-          if (task.due_date) {
-            alerts.push({
-              id: `tarefa-${task.id}`,
-              type: "tarefa",
-              title: task.title,
-              description: task.description,
-              date: task.due_date,
-              priority: task.priority,
-              status: task.status,
-              processoId: task.process_id,
-              processoNumero: task.processos?.numero_processo,
-            });
-          }
+          alerts.push({
+            id: `tarefa-${task.id}`,
+            type: "tarefa",
+            title: task.title,
+            description: task.description,
+            date: task.due_date,
+            priority: task.priority,
+            status: task.status,
+            processoId: task.process_id,
+            processoNumero: task.processos?.numero_processo,
+          });
         });
       }
     } catch (e) {
       console.log("[Alerts] Error fetching tasks:", e);
     }
 
-    // Fetch process deadlines
+    // Fetch ALL process deadlines (no date filter)
     try {
       const processosResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/processos?status=eq.ATIVO&prazo=not.is.null&prazo=lte.${nextWeekStr}&order=prazo.asc&select=id,numero_processo,titulo,prazo,status`,
+        `${SUPABASE_URL}/rest/v1/processos?status=eq.ATIVO&prazo=not.is.null&order=prazo.asc&select=id,numero_processo,titulo,prazo,status`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -261,7 +256,7 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
       console.log("[Alerts] Error fetching processos:", e);
     }
 
-    // Fetch pending signatures
+    // Fetch ALL pending signatures (no date filter)
     try {
       const signaturesResponse = await fetch(
         `${SUPABASE_URL}/rest/v1/zapsign_documents?status=eq.pending&order=created_at.desc&select=*,processos(numero_processo)`,
@@ -297,6 +292,85 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("[Alerts] Error:", error);
     res.status(500).json({ error: error.message || "Failed to fetch alerts" });
+  }
+});
+
+// ZapSign Webhook - receives document signature events
+// Webhook URL for ZapSign configuration: https://[YOUR_DOMAIN]/api/zapsign/webhook
+const ZAPSIGN_WEBHOOK_SECRET = process.env.ZAPSIGN_WEBHOOK_SECRET;
+
+app.post("/api/zapsign/webhook", async (req: Request, res: Response) => {
+  try {
+    const payload = req.body;
+    
+    // Validate webhook secret if configured
+    if (ZAPSIGN_WEBHOOK_SECRET) {
+      const receivedSecret = req.headers["x-zapsign-secret"] || req.query.secret;
+      if (receivedSecret !== ZAPSIGN_WEBHOOK_SECRET) {
+        console.warn("[ZapSign Webhook] Invalid secret received");
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+    }
+    
+    // Validate required fields
+    if (!payload || !payload.event_type) {
+      console.warn("[ZapSign Webhook] Invalid payload - missing event_type");
+      return res.status(400).json({ error: "Invalid payload" });
+    }
+    
+    console.log("[ZapSign Webhook] Received event:", payload.event_type, "for doc:", payload.token);
+    
+    // Handle doc_signed event
+    if (payload.event_type === "doc_signed") {
+      const docToken = payload.token;
+      const docStatus = payload.status;
+      const signedFile = payload.signed_file;
+      const signerWhoSigned = payload.signer_who_signed;
+      
+      if (!docToken) {
+        console.warn("[ZapSign Webhook] Missing document token");
+        return res.status(400).json({ error: "Missing document token" });
+      }
+      
+      // Update document in our database
+      try {
+        const response = await fetch(
+          `${SUPABASE_URL}/rest/v1/zapsign_documents?zapsign_token=eq.${docToken}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              "apikey": SUPABASE_ANON_KEY || "",
+              "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+              "Prefer": "return=representation",
+            },
+            body: JSON.stringify({
+              status: docStatus,
+              signed_file_url: signedFile,
+              last_signer_name: signerWhoSigned?.name,
+              last_signer_email: signerWhoSigned?.email,
+              signed_at: signerWhoSigned?.signed_at,
+              updated_at: new Date().toISOString(),
+            }),
+          }
+        );
+        
+        if (response.ok) {
+          console.log("[ZapSign Webhook] Document updated successfully:", docToken);
+        } else {
+          const errorText = await response.text();
+          console.error("[ZapSign Webhook] Failed to update document:", errorText);
+        }
+      } catch (updateError) {
+        console.error("[ZapSign Webhook] Database update error:", updateError);
+      }
+    }
+    
+    // Return 200 to acknowledge receipt
+    res.status(200).json({ received: true, event_type: payload.event_type });
+  } catch (error: any) {
+    console.error("[ZapSign Webhook] Error:", error);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
