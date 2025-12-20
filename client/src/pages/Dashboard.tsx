@@ -55,6 +55,7 @@ import { supabase } from "@/integrations/supabase/client.ts";
 import { useNavigate } from "react-router-dom";
 import { ClienteDataButton } from "@/components/ClienteDataButton.tsx";
 import { NotificacoesTarefas } from "@/components/NotificacoesTarefas";
+import { AlertasCenter } from "@/components/AlertasCenter";
 import Swal from "sweetalert2";
 import { useToast } from "@/hooks/use-toast";
 declare global {
@@ -371,6 +372,8 @@ const Dashboard = () => {
           </nav>
 
           <div className="flex items-center gap-4">
+            <AlertasCenter />
+            
             <div className="flex items-center gap-2">
               <User className="w-5 h-5 text-amber-400" />
               <div className="flex flex-col">

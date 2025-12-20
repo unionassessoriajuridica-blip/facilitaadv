@@ -182,6 +182,124 @@ app.post("/api/zapsign/build-signer", async (req: Request, res: Response) => {
   }
 });
 
+// Alerts API - consolidated endpoint for all alert types
+app.get("/api/alerts", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: "Authorization header required" });
+    }
+
+    const alerts: any[] = [];
+    const today = new Date();
+    const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const nextWeekStr = nextWeek.toISOString().split("T")[0];
+
+    // Fetch pending tasks
+    try {
+      const tasksResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/tasks?status=neq.completed&due_date=lte.${nextWeekStr}&order=due_date.asc&select=*,processos(numero_processo)`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": authHeader,
+          },
+        }
+      );
+      if (tasksResponse.ok) {
+        const tasks = await tasksResponse.json();
+        tasks.forEach((task: any) => {
+          if (task.due_date) {
+            alerts.push({
+              id: `tarefa-${task.id}`,
+              type: "tarefa",
+              title: task.title,
+              description: task.description,
+              date: task.due_date,
+              priority: task.priority,
+              status: task.status,
+              processoId: task.process_id,
+              processoNumero: task.processos?.numero_processo,
+            });
+          }
+        });
+      }
+    } catch (e) {
+      console.log("[Alerts] Error fetching tasks:", e);
+    }
+
+    // Fetch process deadlines
+    try {
+      const processosResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/processos?status=eq.ATIVO&prazo=not.is.null&prazo=lte.${nextWeekStr}&order=prazo.asc&select=id,numero_processo,titulo,prazo,status`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": authHeader,
+          },
+        }
+      );
+      if (processosResponse.ok) {
+        const processos = await processosResponse.json();
+        processos.forEach((processo: any) => {
+          if (processo.prazo) {
+            alerts.push({
+              id: `prazo-${processo.id}`,
+              type: "prazo",
+              title: `Prazo: ${processo.titulo || processo.numero_processo}`,
+              description: processo.numero_processo,
+              date: processo.prazo,
+              processoId: processo.id,
+              processoNumero: processo.numero_processo,
+            });
+          }
+        });
+      }
+    } catch (e) {
+      console.log("[Alerts] Error fetching processos:", e);
+    }
+
+    // Fetch pending signatures
+    try {
+      const signaturesResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/zapsign_documents?status=eq.pending&order=created_at.desc&select=*,processos(numero_processo)`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": authHeader,
+          },
+        }
+      );
+      if (signaturesResponse.ok) {
+        const signatures = await signaturesResponse.json();
+        signatures.forEach((doc: any) => {
+          if (doc.created_at) {
+            alerts.push({
+              id: `assinatura-${doc.id}`,
+              type: "assinatura",
+              title: doc.nome || "Documento para assinatura",
+              description: doc.processos?.numero_processo,
+              date: doc.created_at,
+              processoId: doc.processo_id,
+              processoNumero: doc.processos?.numero_processo,
+            });
+          }
+        });
+      }
+    } catch (e) {
+      console.log("[Alerts] Error fetching signatures:", e);
+    }
+
+    res.json({ alerts });
+  } catch (error: any) {
+    console.error("[Alerts] Error:", error);
+    res.status(500).json({ error: error.message || "Failed to fetch alerts" });
+  }
+});
+
 // Google Drive API Routes
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
