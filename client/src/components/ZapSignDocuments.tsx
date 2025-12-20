@@ -25,7 +25,15 @@ import {
   AlertCircle,
   FileText,
   RefreshCw,
+  Cloud,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useZapSignCreateDocumentFromProcesso, useZapSignDocument } from "@/hooks/useZapSign";
 
@@ -43,6 +51,7 @@ interface ZapSignDocumentsProps {
     nome_arquivo: string;
     url_arquivo: string;
     tipo_arquivo: string;
+    google_drive_link?: string | null;
   }>;
 }
 
@@ -90,10 +99,14 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
     loadZapSignDocuments();
   }, [processoId]);
 
-  const handleSelectExistingDoc = (doc: { nome_arquivo: string; url_arquivo: string }) => {
-    setDocumentName(doc.nome_arquivo);
-    setPdfUrl(doc.url_arquivo);
-    setSelectedDocument(doc.nome_arquivo);
+  const handleSelectExistingDoc = (docId: string) => {
+    const doc = documentos.find(d => d.id === docId);
+    if (doc) {
+      setDocumentName(doc.nome_arquivo);
+      const publicUrl = doc.google_drive_link || doc.url_arquivo;
+      setPdfUrl(publicUrl);
+      setSelectedDocument(docId);
+    }
   };
 
   const handleSubmit = async () => {
@@ -218,23 +231,30 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                 {documentos.length > 0 && (
                   <div className="space-y-2">
                     <Label>Selecionar documento existente</Label>
-                    <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto">
-                      {documentos
-                        .filter((d) => d.tipo_arquivo === "application/pdf" || d.nome_arquivo.endsWith(".pdf"))
-                        .map((doc) => (
-                          <Button
-                            key={doc.id}
-                            variant={selectedDocument === doc.nome_arquivo ? "default" : "outline"}
-                            size="sm"
-                            className="justify-start"
-                            onClick={() => handleSelectExistingDoc(doc)}
-                            data-testid={`button-select-doc-${doc.id}`}
-                          >
-                            <FileText className="w-4 h-4 mr-2" />
-                            {doc.nome_arquivo}
-                          </Button>
-                        ))}
-                    </div>
+                    <Select
+                      value={selectedDocument}
+                      onValueChange={handleSelectExistingDoc}
+                      data-testid="select-documento-existente"
+                    >
+                      <SelectTrigger data-testid="trigger-select-documento">
+                        <SelectValue placeholder="Selecione um documento PDF..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {documentos
+                          .filter((d) => d.tipo_arquivo === "application/pdf" || d.nome_arquivo.endsWith(".pdf"))
+                          .map((doc) => (
+                            <SelectItem key={doc.id} value={doc.id} data-testid={`option-doc-${doc.id}`}>
+                              <div className="flex items-center gap-2">
+                                <FileText className="w-4 h-4" />
+                                <span>{doc.nome_arquivo}</span>
+                                {doc.google_drive_link && (
+                                  <Cloud className="w-3 h-3 text-blue-500" />
+                                )}
+                              </div>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground">Ou insira uma URL de PDF abaixo</p>
                   </div>
                 )}
