@@ -1,5 +1,4 @@
-import * as React from "react";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +13,8 @@ import {
   AlertCircle,
   ExternalLink,
   User,
+  HardDrive,
+  CheckCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGoogleAuth } from "@/hooks/useGoogleAuth";
@@ -150,7 +151,13 @@ export const GoogleIntegrationCard: React.FC<GoogleIntegrationCardProps> = ({
       icon: Calendar,
       title: "Google Calendar",
       description: "Visualizar e gerenciar sua agenda",
-      required: false,
+      required: true,
+    },
+    {
+      icon: HardDrive,
+      title: "Google Drive",
+      description: "Armazenar e sincronizar documentos do processo",
+      required: true,
     },
   ];
 
@@ -303,7 +310,7 @@ export const GoogleIntegrationCard: React.FC<GoogleIntegrationCardProps> = ({
           <div className="flex-1">
             <CardTitle className="text-lg">Conectar com Google</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Integre seu Gmail e Google Calendar
+              Integre Gmail, Calendar e Drive
             </p>
           </div>
         </div>

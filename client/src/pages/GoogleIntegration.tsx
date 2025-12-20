@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Settings, Shield, Check, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowLeft, Settings, Shield, Check, Calendar as CalendarIcon, HardDrive, Mail } from 'lucide-react';
 import { GoogleIntegrationCard } from '@/components/GoogleIntegrationCard';
 import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 import Swal from 'sweetalert2';
@@ -69,7 +69,7 @@ const GoogleIntegration = () => {
             <div>
               <h2 className="text-xl font-semibold mb-2">Conectar sua conta Google</h2>
               <p className="text-muted-foreground">
-                Integre seu Gmail e Google Calendar para uma experiência completa no sistema jurídico.
+                Integre seu Gmail, Google Calendar e Google Drive para uma experiência completa no sistema jurídico.
               </p>
             </div>
 
@@ -88,7 +88,7 @@ const GoogleIntegration = () => {
               <div className="space-y-4">
                 <div className="flex gap-3">
                   <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Shield className="w-4 h-4 text-primary" />
+                    <Mail className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <h4 className="font-medium">Envio de emails automático</h4>
@@ -100,12 +100,24 @@ const GoogleIntegration = () => {
 
                 <div className="flex gap-3">
                   <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
-                    <Settings className="w-4 h-4 text-primary" />
+                    <CalendarIcon className="w-4 h-4 text-primary" />
                   </div>
                   <div>
                     <h4 className="font-medium">Sincronização de agenda</h4>
                     <p className="text-sm text-muted-foreground">
                       Mantenha seus compromissos sincronizados entre o sistema e o Google Calendar
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <HardDrive className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium">Armazenamento de documentos</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Sincronize automaticamente os arquivos dos processos com seu Google Drive
                     </p>
                   </div>
                 </div>
