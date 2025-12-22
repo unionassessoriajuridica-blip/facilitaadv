@@ -53,23 +53,37 @@ export function useDashboardStats() {
         clientesQuery = clientesQuery.eq("user_id", user.id);
       }
 
-      const tarefasQuery = (supabase as any)
-        .from("tasks")
-        .select("id", { count: "exact", head: true })
-        .neq("status", "completed");
-
-      const [processosResult, clientesResult, audienciasResult, tarefasResult] = await Promise.all([
+      const [processosResult, clientesResult, audienciasResult] = await Promise.all([
         processosCountQuery,
         clientesQuery,
         audienciasQuery,
-        tarefasQuery
       ]);
+
+      let tarefasPendentes = 0;
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        if (accessToken) {
+          const response = await fetch("/api/supabase/functions/tasks-api?status=pending", {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+          });
+          if (response.ok) {
+            const tasks = await response.json();
+            tarefasPendentes = Array.isArray(tasks) ? tasks.length : 0;
+          }
+        }
+      } catch (e) {
+        console.error("Erro ao contar tarefas:", e);
+      }
 
       return {
         processosAtivos: processosResult.count || 0,
         clientes: clientesResult.count || 0,
         audienciasHoje: audienciasResult.count || 0,
-        tarefasPendentes: tarefasResult.count || 0,
+        tarefasPendentes,
       };
     },
     enabled: !!user && !permissionsLoading,

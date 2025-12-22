@@ -161,26 +161,54 @@ const Dashboard = () => {
 
   const loadTarefasComProcessos = async () => {
     try {
-      const { data, error } = await (supabase as any)
-        .from("tasks")
-        .select(`
-          *,
-          processos (
-            id,
-            numero_processo,
-            tipo_processo,
-            clientes (nome)
-          )
-        `)
-        .neq("status", "completed")
-        .order("due_date", { ascending: true });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
 
-      if (error) {
-        console.error("Erro ao carregar tarefas:", error);
+      if (!accessToken) {
+        console.error("Usuario nao autenticado");
         return;
       }
 
-      setTarefasComProcessos(data || []);
+      const response = await fetch("/api/supabase/functions/tasks-api?status=pending", {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        console.error("Erro ao carregar tarefas:", await response.text());
+        return;
+      }
+
+      const tasks = await response.json();
+
+      const processIds = [...new Set(tasks.map((t: any) => t.process_id))];
+      
+      if (processIds.length > 0) {
+        const { data: processos } = await supabase
+          .from("processos")
+          .select("id, numero_processo, tipo_processo, clientes(nome)")
+          .in("id", processIds as string[]);
+
+        const processosMap = new Map((processos || []).map(p => [p.id, p]));
+        
+        const tarefasComDados = tasks.map((t: any) => ({
+          ...t,
+          processos: processosMap.get(t.process_id) || null
+        }));
+
+        tarefasComDados.sort((a: any, b: any) => {
+          const dateA = a.due_date || "9999-12-31";
+          const dateB = b.due_date || "9999-12-31";
+          return dateA.localeCompare(dateB);
+        });
+
+        setTarefasComProcessos(tarefasComDados);
+      } else {
+        setTarefasComProcessos([]);
+      }
+      
       setShowTarefasModal(true);
     } catch (error) {
       console.error("Erro ao carregar tarefas:", error);
