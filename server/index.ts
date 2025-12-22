@@ -215,10 +215,10 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
 
     const alerts: any[] = [];
 
-    // Fetch ALL pending tasks (no date filter)
+    // Fetch ALL pending tasks via Edge Function (same method that works in modal)
     try {
       const tasksResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/tasks?status=neq.completed&order=due_date.asc&select=*,processos(numero_processo)`,
+        `${SUPABASE_URL}/functions/v1/tasks-api?status=pending`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -229,6 +229,30 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
       );
       if (tasksResponse.ok) {
         const tasks = await tasksResponse.json();
+        
+        // Get process info for tasks
+        const processIds = [...new Set(tasks.map((t: any) => t.process_id).filter(Boolean))];
+        let processosMap: Record<string, string> = {};
+        
+        if (processIds.length > 0) {
+          const processosResponse = await fetch(
+            `${SUPABASE_URL}/rest/v1/processos?id=in.(${processIds.join(",")})&select=id,numero_processo`,
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_ANON_KEY || "",
+                "Authorization": authHeader,
+              },
+            }
+          );
+          if (processosResponse.ok) {
+            const processos = await processosResponse.json();
+            processos.forEach((p: any) => {
+              processosMap[p.id] = p.numero_processo;
+            });
+          }
+        }
+        
         tasks.forEach((task: any) => {
           alerts.push({
             id: `tarefa-${task.id}`,
@@ -236,12 +260,14 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
             title: task.title,
             description: task.description,
             date: task.due_date,
-            priority: task.priority,
+            priority: task.priority === "high" ? "alta" : task.priority === "medium" ? "media" : "baixa",
             status: task.status,
             processoId: task.process_id,
-            processoNumero: task.processos?.numero_processo,
+            processoNumero: processosMap[task.process_id] || null,
           });
         });
+      } else {
+        console.log("[Alerts] Tasks response not ok:", await tasksResponse.text());
       }
     } catch (e) {
       console.log("[Alerts] Error fetching tasks:", e);
