@@ -54,7 +54,6 @@ import {
 import { supabase } from "@/integrations/supabase/client.ts";
 import { useNavigate } from "react-router-dom";
 import { ClienteDataButton } from "@/components/ClienteDataButton.tsx";
-import { NotificacoesTarefas } from "@/components/NotificacoesTarefas";
 import { AlertasCenter } from "@/components/AlertasCenter";
 import Swal from "sweetalert2";
 import { useToast } from "@/hooks/use-toast";
@@ -432,11 +431,6 @@ const Dashboard = () => {
               <span className="text-4xl font-bold">{stats.tarefasPendentes}</span>
             </div>
           </div>
-        </div>
-
-        {/* Notificacoes de Tarefas */}
-        <div className="mb-6">
-          <NotificacoesTarefas />
         </div>
 
         {/* Quick Actions Grid - Linha 1 (4 cards) */}
