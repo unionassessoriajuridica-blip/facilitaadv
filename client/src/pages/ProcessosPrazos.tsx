@@ -84,7 +84,7 @@ const ProcessosPrazos = () => {
         .from("tasks")
         .select("id, title, due_date, priority, status, process_id")
         .in("process_id", processosIds)
-        .neq("status", "concluida")
+        .neq("status", "completed")
         .not("due_date", "is", null);
 
       if (tarefasError) {

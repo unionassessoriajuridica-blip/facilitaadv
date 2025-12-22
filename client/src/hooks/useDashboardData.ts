@@ -56,7 +56,7 @@ export function useDashboardStats() {
       const tarefasQuery = (supabase as any)
         .from("tasks")
         .select("id", { count: "exact", head: true })
-        .neq("status", "concluida");
+        .neq("status", "completed");
 
       const [processosResult, clientesResult, audienciasResult, tarefasResult] = await Promise.all([
         processosCountQuery,

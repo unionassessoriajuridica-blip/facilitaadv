@@ -172,7 +172,7 @@ const Dashboard = () => {
             clientes (nome)
           )
         `)
-        .neq("status", "concluida")
+        .neq("status", "completed")
         .order("due_date", { ascending: true });
 
       if (error) {
