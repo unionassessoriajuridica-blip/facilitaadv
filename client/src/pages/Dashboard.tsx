@@ -93,14 +93,22 @@ const Dashboard = () => {
   useEffect(() => {
     const loadPendingSignatures = async () => {
       try {
-        const { count, error } = await supabase
-          .from("zapsign_documents")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "pending");
+        // Buscar de ambas as tabelas: documentos_digitais e zapsign_documents
+        const [docDigitaisResult, zapSignResult] = await Promise.all([
+          supabase
+            .from("documentos_digitais")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending"),
+          supabase
+            .from("zapsign_documents")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "pending")
+        ]);
         
-        if (!error && count !== null) {
-          setPendingSignaturesCount(count);
-        }
+        const countDigitais = docDigitaisResult.count || 0;
+        const countZapSign = zapSignResult.count || 0;
+        
+        setPendingSignaturesCount(countDigitais + countZapSign);
       } catch (err) {
         console.error("Error loading pending signatures count:", err);
       }
