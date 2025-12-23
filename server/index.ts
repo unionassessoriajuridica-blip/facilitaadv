@@ -660,6 +660,78 @@ app.post("/api/zapsign/webhook", async (req: Request, res: Response) => {
   }
 });
 
+// Google System Authentication Routes (shared across all users)
+import * as googleSystemAuthService from "./services/googleSystemAuthService";
+
+app.get("/api/google/system/status", async (req: Request, res: Response) => {
+  try {
+    const status = await googleSystemAuthService.getConnectionStatus();
+    res.json(status);
+  } catch (error: any) {
+    console.error("[Google System] Status error:", error);
+    res.json({ connected: false, error: error.message });
+  }
+});
+
+app.get("/api/google/system/auth-url", async (req: Request, res: Response) => {
+  try {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || req.hostname;
+    const redirectUri = `${protocol}://${host}/api/google/system/callback`;
+    
+    const authUrl = googleSystemAuthService.getAuthUrl(redirectUri);
+    res.json({ authUrl, redirectUri });
+  } catch (error: any) {
+    console.error("[Google System] Auth URL error:", error);
+    res.status(500).json({ error: error.message || "Failed to generate auth URL" });
+  }
+});
+
+app.get("/api/google/system/callback", async (req: Request, res: Response) => {
+  try {
+    const { code, error: authError } = req.query;
+    
+    if (authError) {
+      console.error("[Google System] OAuth error:", authError);
+      return res.redirect("/?google_error=" + encodeURIComponent(authError as string));
+    }
+    
+    if (!code) {
+      return res.redirect("/?google_error=no_code");
+    }
+    
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const host = req.headers['x-forwarded-host'] || req.headers.host || req.hostname;
+    const redirectUri = `${protocol}://${host}/api/google/system/callback`;
+    
+    const tokens = await googleSystemAuthService.exchangeCodeForTokens(code as string, redirectUri);
+    
+    await googleSystemAuthService.connect(
+      tokens.access_token,
+      tokens.refresh_token,
+      tokens.expiry_date,
+      tokens.email
+    );
+    
+    console.log(`[Google System] Successfully connected as ${tokens.email}`);
+    
+    res.redirect("/?google_connected=true");
+  } catch (error: any) {
+    console.error("[Google System] Callback error:", error);
+    res.redirect("/?google_error=" + encodeURIComponent(error.message || "connection_failed"));
+  }
+});
+
+app.post("/api/google/system/disconnect", async (req: Request, res: Response) => {
+  try {
+    await googleSystemAuthService.disconnect();
+    res.json({ success: true, message: "Google integration disconnected" });
+  } catch (error: any) {
+    console.error("[Google System] Disconnect error:", error);
+    res.status(500).json({ error: error.message || "Failed to disconnect" });
+  }
+});
+
 // Google Drive API Routes
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
 
@@ -777,6 +849,183 @@ app.get("/api/drive/files/:fileId", async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error("[Google Drive] Get file details error:", error);
     res.status(500).json({ error: error.message || "Failed to get file details" });
+  }
+});
+
+// Google Gmail API Routes (system-wide)
+import * as googleGmailService from "./services/googleGmailService";
+
+app.get("/api/gmail/status", async (req: Request, res: Response) => {
+  try {
+    const connected = await googleGmailService.isConnected();
+    if (connected) {
+      const profile = await googleGmailService.getProfile();
+      res.json({ connected: true, email: profile.email });
+    } else {
+      res.json({ connected: false });
+    }
+  } catch (error: any) {
+    console.error("[Gmail] Status error:", error);
+    res.json({ connected: false, error: error.message });
+  }
+});
+
+app.post("/api/gmail/send", async (req: Request, res: Response) => {
+  try {
+    const { to, subject, body, isHtml, cc, bcc, replyTo } = req.body;
+    
+    if (!to || !subject || !body) {
+      return res.status(400).json({ error: "to, subject, and body are required" });
+    }
+    
+    const result = await googleGmailService.sendEmail({
+      to,
+      subject,
+      body,
+      isHtml: isHtml ?? true,
+      cc,
+      bcc,
+      replyTo,
+    });
+    
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Gmail] Send error:", error);
+    res.status(500).json({ error: error.message || "Failed to send email" });
+  }
+});
+
+app.get("/api/gmail/messages", async (req: Request, res: Response) => {
+  try {
+    const maxResults = parseInt(req.query.maxResults as string) || 20;
+    const query = req.query.q as string;
+    
+    const messages = await googleGmailService.listMessages(maxResults, query);
+    res.json(messages);
+  } catch (error: any) {
+    console.error("[Gmail] List messages error:", error);
+    res.status(500).json({ error: error.message || "Failed to list messages" });
+  }
+});
+
+app.get("/api/gmail/messages/:messageId", async (req: Request, res: Response) => {
+  try {
+    const { messageId } = req.params;
+    const message = await googleGmailService.getMessage(messageId);
+    res.json(message);
+  } catch (error: any) {
+    console.error("[Gmail] Get message error:", error);
+    res.status(500).json({ error: error.message || "Failed to get message" });
+  }
+});
+
+// Google Calendar API Routes (system-wide)
+import * as googleCalendarService from "./services/googleCalendarService";
+
+app.get("/api/calendar/status", async (req: Request, res: Response) => {
+  try {
+    const connected = await googleCalendarService.isConnected();
+    if (connected) {
+      const info = await googleCalendarService.getCalendarInfo();
+      res.json({ connected: true, ...info });
+    } else {
+      res.json({ connected: false });
+    }
+  } catch (error: any) {
+    console.error("[Calendar] Status error:", error);
+    res.json({ connected: false, error: error.message });
+  }
+});
+
+app.get("/api/calendar/events", async (req: Request, res: Response) => {
+  try {
+    const { timeMin, timeMax, maxResults, q, facilitaOnly } = req.query;
+    
+    const options = {
+      timeMin: timeMin as string,
+      timeMax: timeMax as string,
+      maxResults: maxResults ? parseInt(maxResults as string) : 50,
+      query: q as string,
+    };
+    
+    const events = facilitaOnly === 'true'
+      ? await googleCalendarService.listFacilitaEvents(options)
+      : await googleCalendarService.listEvents(options);
+    
+    res.json(events);
+  } catch (error: any) {
+    console.error("[Calendar] List events error:", error);
+    res.status(500).json({ error: error.message || "Failed to list events" });
+  }
+});
+
+app.post("/api/calendar/events", async (req: Request, res: Response) => {
+  try {
+    const { summary, description, location, startDateTime, endDateTime, attendees, colorId } = req.body;
+    
+    if (!summary || !startDateTime || !endDateTime) {
+      return res.status(400).json({ error: "summary, startDateTime, and endDateTime are required" });
+    }
+    
+    const event = await googleCalendarService.createEvent({
+      summary,
+      description,
+      location,
+      startDateTime,
+      endDateTime,
+      attendees,
+      colorId,
+    });
+    
+    res.json(event);
+  } catch (error: any) {
+    console.error("[Calendar] Create event error:", error);
+    res.status(500).json({ error: error.message || "Failed to create event" });
+  }
+});
+
+app.patch("/api/calendar/events/:eventId", async (req: Request, res: Response) => {
+  try {
+    const { eventId } = req.params;
+    const { summary, description, location, startDateTime, endDateTime, attendees, colorId } = req.body;
+    
+    const event = await googleCalendarService.updateEvent({
+      eventId,
+      summary,
+      description,
+      location,
+      startDateTime,
+      endDateTime,
+      attendees,
+      colorId,
+    });
+    
+    res.json(event);
+  } catch (error: any) {
+    console.error("[Calendar] Update event error:", error);
+    res.status(500).json({ error: error.message || "Failed to update event" });
+  }
+});
+
+app.delete("/api/calendar/events/:eventId", async (req: Request, res: Response) => {
+  try {
+    const { eventId } = req.params;
+    await googleCalendarService.deleteEvent(eventId);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("[Calendar] Delete event error:", error);
+    res.status(500).json({ error: error.message || "Failed to delete event" });
+  }
+});
+
+app.get("/api/calendar/events/:eventId", async (req: Request, res: Response) => {
+  try {
+    const { eventId } = req.params;
+    const event = await googleCalendarService.getEvent(eventId);
+    res.json(event);
+  } catch (error: any) {
+    console.error("[Calendar] Get event error:", error);
+    res.status(500).json({ error: error.message || "Failed to get event" });
   }
 });
 

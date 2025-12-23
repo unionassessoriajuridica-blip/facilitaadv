@@ -1,74 +1,16 @@
 import { google, drive_v3 } from 'googleapis';
 import { Readable } from 'stream';
+import { googleSystemAuthService } from './googleSystemAuthService';
 
 const ROOT_FOLDER_NAME = 'FACILITA ADV';
 
-let connectionSettings: any = null;
-
-async function getAccessToken(): Promise<string> {
-  if (
-    connectionSettings &&
-    connectionSettings.settings?.expires_at &&
-    new Date(connectionSettings.settings.expires_at).getTime() > Date.now()
-  ) {
-    return connectionSettings.settings.access_token;
-  }
-
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY
-    ? 'repl ' + process.env.REPL_IDENTITY
-    : process.env.WEB_REPL_RENEWAL
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('Replit token not found - Google Drive connection unavailable');
-  }
-
-  const response = await fetch(
-    'https://' +
-      hostname +
-      '/api/v2/connection?include_secrets=true&connector_names=google-drive',
-    {
-      headers: {
-        Accept: 'application/json',
-        X_REPLIT_TOKEN: xReplitToken,
-      },
-    }
-  );
-
-  const data = await response.json();
-  connectionSettings = data.items?.[0];
-
-  const accessToken =
-    connectionSettings?.settings?.access_token ||
-    connectionSettings?.settings?.oauth?.credentials?.access_token;
-
-  if (!connectionSettings || !accessToken) {
-    throw new Error('Google Drive not connected. Please connect Google Drive in the Replit integrations.');
-  }
-  
-  return accessToken;
-}
-
 async function getGoogleDriveClient(): Promise<drive_v3.Drive> {
-  const accessToken = await getAccessToken();
-
-  const oauth2Client = new google.auth.OAuth2();
-  oauth2Client.setCredentials({
-    access_token: accessToken,
-  });
-
+  const oauth2Client = await googleSystemAuthService.getOAuth2ClientWithToken();
   return google.drive({ version: 'v3', auth: oauth2Client });
 }
 
 export async function isConnected(): Promise<boolean> {
-  try {
-    await getAccessToken();
-    return true;
-  } catch {
-    return false;
-  }
+  return googleSystemAuthService.isConnected();
 }
 
 export async function findFolder(name: string, parentId?: string): Promise<string | null> {

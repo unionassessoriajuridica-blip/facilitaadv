@@ -21,21 +21,15 @@ CREATE TABLE IF NOT EXISTS google_system_credentials (
 -- Add RLS policies
 ALTER TABLE google_system_credentials ENABLE ROW LEVEL SECURITY;
 
--- Only authenticated users can read connection status (not tokens)
-CREATE POLICY "Users can view connection status" ON google_system_credentials
-  FOR SELECT
-  USING (auth.role() = 'authenticated');
+-- SECURITY: No SELECT policy for regular users - tokens should NEVER be exposed to frontend
+-- Only service role (backend) can access this table
+-- Frontend should use /api/google/system/status endpoint to check connection status
 
--- Only admins/masters can insert/update/delete
-CREATE POLICY "Admins can manage credentials" ON google_system_credentials
+-- Only admins/masters can insert/update/delete (via service role on backend)
+CREATE POLICY "Service role full access" ON google_system_credentials
   FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM auth.users u
-      WHERE u.id = auth.uid()
-      AND (u.raw_user_meta_data->>'role' IN ('master', 'admin'))
-    )
-  );
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
 
 -- Create index for quick lookups
 CREATE INDEX idx_google_system_credentials_service ON google_system_credentials(service_type);

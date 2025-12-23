@@ -53,34 +53,39 @@ Preferred communication style: Simple, everyday language.
 - **Supabase Storage**: File uploads and document storage
 - **Supabase Edge Functions**: Server-side logic for AI and integrations
 
-### Google Services Integration (via Replit Connectors)
-- **Google OAuth 2.0**: Authentication for Google services
-- **Gmail Integration**: Email sending and management (`client/src/services/googleGmailService.ts`)
-- **Google Calendar Integration**: Calendar event management (`client/src/services/googleCalendarService.ts`)
-- **Credentials**: Managed via `VITE_GOOGLE_CLIENT_ID` and `VITE_GOOGLE_CLIENT_SECRET` secrets
-- **Required Scopes**: userinfo.email, userinfo.profile, gmail.send, calendar, drive
+### Google System-Wide Integration (Drive, Gmail, Calendar)
 
-**Configuration**:
-- Google credentials are stored as Replit secrets
-- Services use Replit Connectors for secure token management
-- No need to implement OAuth flow manually - handled by Replit integration
+**IMPORTANTE**: As integrações Google são de nível de SISTEMA, não por usuário. Uma vez conectado por um administrador, TODOS os usuários do sistema têm acesso a Drive, Gmail e Calendar.
 
-### Google Drive Integration (Document Sync)
-- **Server Service**: `server/services/googleDriveService.ts` - Backend API communication
-- **Frontend Hook**: `client/src/hooks/useGoogleDrive.ts` - React integration
-- **UI Component**: `client/src/components/ProcessoArquivos.tsx` - File upload with Drive sync
-- **Connection**: Via Replit Connectors (automatic OAuth and token refresh)
-- **Root Folder**: "FACILITA ADV" created automatically in user's Drive
-- **Process Folders**: Created automatically using process number as folder name
+**Arquitetura**:
+- **Auth Service**: `server/services/googleSystemAuthService.ts` - Gerencia OAuth2, tokens e refresh automático
+- **Drive Service**: `server/services/googleDriveService.ts` - Upload/download de arquivos
+- **Gmail Service**: `server/services/googleGmailService.ts` - Envio de emails
+- **Calendar Service**: `server/services/googleCalendarService.ts` - Eventos do calendário
+- **Credentials Storage**: Tabela `google_system_credentials` no Supabase (tokens criptografados)
+- **Required Scopes**: userinfo.email, userinfo.profile, drive.file, gmail.send, gmail.readonly, calendar, calendar.events
 
-**Features**:
-- Automatic sync of uploaded files to Google Drive
-- Creates folder structure: FACILITA ADV > [numero_processo]
-- Manual sync button for existing files not yet in Drive
-- Direct link to view files in Google Drive
-- Connection status indicator in UI
+**API Endpoints - Sistema** (`/api/google/system/*`):
+- `GET /api/google/system/status` - Verifica status da conexão
+- `GET /api/google/system/auth-url` - Gera URL de autenticação OAuth
+- `GET /api/google/system/callback` - Callback do OAuth (recebe tokens)
+- `POST /api/google/system/disconnect` - Desconecta a integração
 
-**API Endpoints** (`server/index.ts`):
+**API Endpoints - Gmail** (`/api/gmail/*`):
+- `GET /api/gmail/status` - Status e email conectado
+- `POST /api/gmail/send` - Enviar email (to, subject, body, isHtml, cc, bcc)
+- `GET /api/gmail/messages` - Listar mensagens
+- `GET /api/gmail/messages/:messageId` - Obter mensagem específica
+
+**API Endpoints - Calendar** (`/api/calendar/*`):
+- `GET /api/calendar/status` - Status do calendário
+- `GET /api/calendar/events` - Listar eventos (query params: timeMin, timeMax, facilitaOnly)
+- `POST /api/calendar/events` - Criar evento
+- `PATCH /api/calendar/events/:eventId` - Atualizar evento
+- `DELETE /api/calendar/events/:eventId` - Deletar evento
+- `GET /api/calendar/events/:eventId` - Obter evento específico
+
+**API Endpoints - Drive** (`/api/drive/*`):
 - `GET /api/drive/status` - Check if Drive is connected
 - `GET /api/drive/root-folder` - Get/create root folder
 - `GET /api/drive/process-folder/:numeroProcesso` - Get/create process folder
@@ -91,7 +96,15 @@ Preferred communication style: Simple, everyday language.
 - `DELETE /api/drive/files/:fileId` - Delete file from Drive
 
 **Migration Script** (run in Supabase SQL Editor):
+- `supabase/migrations/20251223_google_system_credentials.sql` - Tabela para tokens do sistema
 - `supabase/migrations/20251220_add_google_drive_fields.sql` - Add Drive fields to documentos_processo
+
+**Configuração Inicial**:
+1. Execute a migration `20251223_google_system_credentials.sql` no Supabase
+2. Acesse `/google-integration` como administrador
+3. Clique em "Conectar conta Google"
+4. Autorize os escopos solicitados
+5. Todos os usuários agora têm acesso às integrações
 
 ### Document Signing (ZapSign)
 - **ZapSign Integration**: Digital signature service for legal documents
