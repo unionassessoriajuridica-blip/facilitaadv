@@ -305,110 +305,125 @@ const ProcessView = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <Button variant="outline" onClick={() => navigate("/dashboard")} size="sm">
+              <ArrowLeft className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Voltar</span>
             </Button>
             <div>
-              <h1 className="text-2xl font-bold">Dados do Cliente</h1>
-              <p className="text-muted-foreground">{cliente.nome}</p>
+              <h1 className="text-lg sm:text-2xl font-bold">Dados do Cliente</h1>
+              <p className="text-muted-foreground text-sm sm:text-base truncate max-w-[200px] sm:max-w-none">{cliente.nome}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               onClick={() => navigate(`/novo-processo?edit=${id}`)}
               className="bg-primary hover:bg-primary/90"
+              size="sm"
             >
-              <Edit className="w-4 h-4 mr-2" />
-              Editar
+              <Edit className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Editar</span>
             </Button>
 
             <Button
               onClick={() => navigate(`/novo-processo?edit=${id}&step=2`)}
               variant="outline"
+              size="sm"
             >
-              <Edit className="w-4 h-4 mr-2" />
-              Dados do Processo
+              <Edit className="w-4 h-4 sm:mr-2" />
+              <span className="hidden md:inline">Dados do Processo</span>
+              <span className="md:hidden">Processo</span>
             </Button>
 
             <Button
               onClick={() => navigate(`/novo-processo?edit=${id}&step=3`)}
               variant="outline"
+              size="sm"
+              className="hidden sm:flex"
             >
               <Edit className="w-4 h-4 mr-2" />
-              Configuração Financeira
+              Financeiro
             </Button>
 
             <Button
               onClick={() => navigate(`/novo-processo?edit=${id}&step=4`)}
               variant="outline"
+              size="sm"
+              className="hidden lg:flex"
             >
               <Edit className="w-4 h-4 mr-2" />
-              Configuração Anexos
+              Anexos
             </Button>
           </div>
         </div>
 
         <Card>
-          <CardContent className="p-6">
+          <CardContent className="p-3 sm:p-6">
             <Tabs defaultValue="dados-pessoais" className="w-full">
-              <TabsList className="grid w-full grid-cols-7">
+              <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+              <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-1">
                 <TabsTrigger
                   value="dados-pessoais"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                 >
-                  <User className="w-4 h-4" />
-                  Dados Pessoais
+                  <User className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Dados Pessoais</span>
+                  <span className="sm:hidden">Dados</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="financeiro"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                 >
-                  <DollarSign className="w-4 h-4" />
-                  Financeiro ({financeiro.length})
+                  <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Financeiro ({financeiro.length})</span>
+                  <span className="sm:hidden">Fin.</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="responsavel"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                 >
-                  <Users className="w-4 h-4" />
-                  Responsável
+                  <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Responsável</span>
+                  <span className="sm:hidden">Resp.</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="tarefas"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                   data-testid="tab-tarefas"
                 >
-                  <CheckSquare className="w-4 h-4" />
+                  <CheckSquare className="w-3 h-3 sm:w-4 sm:h-4" />
                   Tarefas
                 </TabsTrigger>
                 <TabsTrigger
                   value="arquivos"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                 >
-                  <FileText className="w-4 h-4" />
-                  Arquivos ({documentos.length})
+                  <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Arquivos ({documentos.length})</span>
+                  <span className="sm:hidden">Arq.</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="assinatura"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                   data-testid="tab-assinatura"
                 >
-                  <FileSignature className="w-4 h-4" />
-                  Assinatura
+                  <FileSignature className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Assinatura</span>
+                  <span className="sm:hidden">Assinar</span>
                 </TabsTrigger>
                 <TabsTrigger
                   value="info-processo"
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                   data-testid="tab-info-processo"
                 >
-                  <Gavel className="w-4 h-4" />
-                  Info. Processo
+                  <Gavel className="w-3 h-3 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Info. Processo</span>
+                  <span className="sm:hidden">Info</span>
                 </TabsTrigger>
               </TabsList>
+              </div>
 
               <TabsContent value="dados-pessoais" className="mt-6">
                 <div className="space-y-6">

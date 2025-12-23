@@ -192,13 +192,13 @@ const Financial = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center gap-4 mb-6">
-          <Button variant="outline" onClick={() => navigate("/dashboard")}>
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
+          <Button variant="outline" onClick={() => navigate("/dashboard")} size="sm">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
-          <h1 className="text-2xl font-bold">Gestão Financeira</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Gestão Financeira</h1>
         </div>
 
         {/* Cards de Resumo usando o componente */}
@@ -209,10 +209,10 @@ const Financial = () => {
         />
 
         <Tabs defaultValue="financeiro" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="financeiro">Gestão Financeira</TabsTrigger>
-            <TabsTrigger value="relatorios">Relatórios e Gráficos</TabsTrigger>
-            <TabsTrigger value="responsavel">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto">
+            <TabsTrigger value="financeiro" className="text-xs sm:text-sm">Gestão Financeira</TabsTrigger>
+            <TabsTrigger value="relatorios" className="text-xs sm:text-sm">Relatórios e Gráficos</TabsTrigger>
+            <TabsTrigger value="responsavel" className="text-xs sm:text-sm">
               Responsável Financeiro
             </TabsTrigger>
           </TabsList>
@@ -352,10 +352,9 @@ const Financial = () => {
                                   <h3 className="text-lg font-semibold">
                                     {cliente}
                                   </h3>
-                                  <div className="flex gap-4 text-sm text-muted-foreground mt-1">
+                                  <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground mt-1">
                                     <span>
-                                      Total de parcelas:{" "}
-                                      {parcelasCliente.length}
+                                      Parcelas: {parcelasCliente.length}
                                     </span>
                                     <span>
                                       Pendente: {formatCurrency(totalPendente)}
