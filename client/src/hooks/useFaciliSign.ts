@@ -94,7 +94,7 @@ export const useFaciliSign = () => {
           signers,
           lang: "pt-br",
           date_limit_to_sign: options?.dateLimitToSign,
-          folder_path: "/facilisign/",
+          folder_path: "/facilita-adv/",
         }),
       });
 
@@ -171,7 +171,7 @@ export const useFaciliSign = () => {
           signers,
           lang: "pt-br",
           date_limit_to_sign: options?.dateLimitToSign,
-          folder_path: "/facilisign/",
+          folder_path: "/facilita-adv/",
         }),
       });
 

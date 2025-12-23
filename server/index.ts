@@ -305,10 +305,10 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
       console.log("[Alerts] Error fetching processos:", e);
     }
 
-    // Fetch ALL pending signatures (no date filter)
+    // Fetch ALL pending signatures from documentos_digitais (FaciliSign)
     try {
       const signaturesResponse = await fetch(
-        `${SUPABASE_URL}/rest/v1/zapsign_documents?status=eq.pending&order=created_at.desc&select=*,processos(numero_processo)`,
+        `${SUPABASE_URL}/rest/v1/documentos_digitais?status=eq.ENVIADO_PARA_ASSINATURA&order=created_at.desc&select=*`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -321,14 +321,16 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
         const signatures = await signaturesResponse.json();
         signatures.forEach((doc: any) => {
           if (doc.created_at) {
+            // Extract signer info from signatarios array if available
+            const signatarios = doc.signatarios || [];
+            const signerNames = signatarios.map((s: any) => s.name || s.nome).filter(Boolean).join(", ");
+            
             alerts.push({
               id: `assinatura-${doc.id}`,
               type: "assinatura",
               title: doc.nome || "Documento para assinatura",
-              description: doc.processos?.numero_processo,
+              description: signerNames ? `Signatarios: ${signerNames}` : "Aguardando assinatura",
               date: doc.created_at,
-              processoId: doc.processo_id,
-              processoNumero: doc.processos?.numero_processo,
             });
           }
         });

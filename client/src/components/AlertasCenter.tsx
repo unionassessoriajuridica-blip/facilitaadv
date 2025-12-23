@@ -26,6 +26,11 @@ import {
   Clock,
   ChevronRight,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useNavigate } from "react-router-dom";
 
 interface AlertItem {
@@ -274,18 +279,38 @@ export function AlertasCenter() {
                 </Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="tarefa" className="text-xs" data-testid="tab-tarefas">
-              <CheckSquare className="w-3 h-3" />
-            </TabsTrigger>
-            <TabsTrigger value="prazo" className="text-xs" data-testid="tab-prazos">
-              <FileText className="w-3 h-3" />
-            </TabsTrigger>
-            <TabsTrigger value="evento" className="text-xs" data-testid="tab-eventos">
-              <Calendar className="w-3 h-3" />
-            </TabsTrigger>
-            <TabsTrigger value="assinatura" className="text-xs" data-testid="tab-assinaturas">
-              <PenTool className="w-3 h-3" />
-            </TabsTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="tarefa" className="text-xs" data-testid="tab-tarefas">
+                  <CheckSquare className="w-3 h-3" />
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Tarefas</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="prazo" className="text-xs" data-testid="tab-prazos">
+                  <FileText className="w-3 h-3" />
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Prazos</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="evento" className="text-xs" data-testid="tab-eventos">
+                  <Calendar className="w-3 h-3" />
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Eventos</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="assinatura" className="text-xs" data-testid="tab-assinaturas">
+                  <PenTool className="w-3 h-3" />
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent>Assinaturas</TooltipContent>
+            </Tooltip>
           </TabsList>
 
           {["todos", "tarefa", "prazo", "evento", "assinatura"].map((tabValue) => (
