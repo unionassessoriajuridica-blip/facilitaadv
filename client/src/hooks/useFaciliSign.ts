@@ -20,6 +20,9 @@ export interface DocumentoFaciliSign {
   signatarios?: any[];
   created_at: string;
   updated_at?: string;
+  source?: "facilisign" | "processo";
+  processo_id?: string | null;
+  numero_processo?: string | null;
 }
 
 interface ZapSignDocResponse {
@@ -283,37 +286,48 @@ export const useFaciliSign = () => {
   const getDocuments = async (
     page: number = 1,
     pageSize: number = 10
-  ): Promise<DocumentoFaciliSign[]> => {
+  ): Promise<{ documents: DocumentoFaciliSign[]; total: number; totalPages: number }> => {
     try {
-      const { data, error } = await supabase
-        .from("documentos_digitais")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .range((page - 1) * pageSize, page * pageSize - 1);
+      const authHeader = await getAuthHeader();
+      
+      const response = await fetch(
+        `/api/zapsign/db/all-documents?page=${page}&pageSize=${pageSize}`,
+        {
+          headers: {
+            Authorization: authHeader,
+          },
+        }
+      );
 
-      if (error) {
-        console.error("Erro ao buscar documentos:", error);
-        return [];
+      if (!response.ok) {
+        console.error("Erro ao buscar documentos:", await response.text());
+        return { documents: [], total: 0, totalPages: 0 };
       }
 
-      return data.map((doc: any) => {
-        const webhookData = doc.webhook_data || {};
-        return {
+      const result = await response.json();
+      
+      return {
+        documents: result.documents.map((doc: any) => ({
           id: doc.id,
           nome: doc.nome,
           status: reverseMapStatus(doc.status),
-          zapsign_token: doc.docuseal_template_id || "",
-          zapsign_open_id: doc.docuseal_submission_id,
-          original_file_url: webhookData.original_file_url,
-          signed_file_url: webhookData.signed_file_url,
+          zapsign_token: doc.zapsign_token || "",
+          zapsign_open_id: doc.zapsign_open_id,
+          original_file_url: doc.original_file_url,
+          signed_file_url: doc.signed_file_url,
           signatarios: doc.signatarios,
           created_at: doc.created_at,
           updated_at: doc.updated_at,
-        };
-      });
+          source: doc.source,
+          processo_id: doc.processo_id,
+          numero_processo: doc.numero_processo,
+        })),
+        total: result.total,
+        totalPages: result.totalPages,
+      };
     } catch (error) {
       console.error("Erro ao buscar documentos:", error);
-      return [];
+      return { documents: [], total: 0, totalPages: 0 };
     }
   };
 

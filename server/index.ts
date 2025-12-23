@@ -205,6 +205,137 @@ app.post("/api/zapsign/build-signer", async (req: Request, res: Response) => {
   }
 });
 
+// Unified endpoint to get ALL signature documents (from both FaciliSign and Processos)
+app.get("/api/zapsign/db/all-documents", async (req: Request, res: Response) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: "Authorization header required" });
+    }
+
+    const page = parseInt(req.query.page as string) || 1;
+    const pageSize = parseInt(req.query.pageSize as string) || 20;
+
+    const allDocs: any[] = [];
+
+    // Fetch from documentos_digitais (FaciliSign module - user's own documents)
+    try {
+      const faciliSignResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/documentos_digitais?order=created_at.desc&select=*`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": authHeader,
+          },
+        }
+      );
+      if (faciliSignResponse.ok) {
+        const faciliSignDocs = await faciliSignResponse.json();
+        faciliSignDocs.forEach((doc: any) => {
+          const webhookData = doc.webhook_data || {};
+          allDocs.push({
+            id: doc.id,
+            nome: doc.nome,
+            status: doc.status,
+            zapsign_token: doc.docuseal_template_id || "",
+            zapsign_open_id: doc.docuseal_submission_id,
+            original_file_url: webhookData.original_file_url,
+            signed_file_url: webhookData.signed_file_url,
+            signatarios: doc.signatarios,
+            created_at: doc.created_at,
+            updated_at: doc.updated_at,
+            source: "facilisign",
+            processo_id: null,
+            numero_processo: null,
+          });
+        });
+      }
+    } catch (e) {
+      console.log("[ZapSign All] Error fetching FaciliSign docs:", e);
+    }
+
+    // Fetch from zapsign_documents (Processos Assinatura tab - user's own via RLS)
+    try {
+      const processosResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/zapsign_documents?order=created_at.desc&select=*`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": authHeader,
+          },
+        }
+      );
+      if (processosResponse.ok) {
+        const processosDocs = await processosResponse.json();
+        
+        // Get process numbers for display
+        const processIds = [...new Set(processosDocs.map((d: any) => d.processo_id).filter(Boolean))] as string[];
+        let processosMap: Record<string, string> = {};
+        
+        if (processIds.length > 0) {
+          const quotedIds = processIds.map((id) => `"${id}"`).join(",");
+          const processInfoResponse = await fetch(
+            `${SUPABASE_URL}/rest/v1/processos?id=in.(${quotedIds})&select=id,numero_processo`,
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_ANON_KEY || "",
+                "Authorization": authHeader,
+              },
+            }
+          );
+          if (processInfoResponse.ok) {
+            const processInfo = await processInfoResponse.json();
+            processInfo.forEach((p: any) => {
+              processosMap[p.id] = p.numero_processo;
+            });
+          }
+        }
+        
+        processosDocs.forEach((doc: any) => {
+          allDocs.push({
+            id: doc.id,
+            nome: doc.nome,
+            status: doc.status,
+            zapsign_token: doc.zapsign_token || "",
+            zapsign_open_id: doc.zapsign_open_id,
+            original_file_url: doc.original_file_url,
+            signed_file_url: doc.signed_file_url,
+            signatarios: doc.signatarios,
+            created_at: doc.created_at,
+            updated_at: doc.updated_at,
+            source: "processo",
+            processo_id: doc.processo_id,
+            numero_processo: processosMap[doc.processo_id] || null,
+          });
+        });
+      }
+    } catch (e) {
+      console.log("[ZapSign All] Error fetching Processos docs:", e);
+    }
+
+    // Sort by created_at descending
+    allDocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    // Paginate
+    const startIndex = (page - 1) * pageSize;
+    const paginatedDocs = allDocs.slice(startIndex, startIndex + pageSize);
+
+    res.json({
+      documents: paginatedDocs,
+      total: allDocs.length,
+      page,
+      pageSize,
+      totalPages: Math.ceil(allDocs.length / pageSize),
+    });
+  } catch (error: any) {
+    console.error("[ZapSign All] Error:", error);
+    res.status(500).json({ error: error.message || "Failed to get documents" });
+  }
+});
+
 // Alerts API - consolidated endpoint for all alert types (shows ALL pending items)
 app.get("/api/alerts", async (req: Request, res: Response) => {
   try {
@@ -231,12 +362,13 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
         const tasks = await tasksResponse.json();
         
         // Get process info for tasks
-        const processIds = [...new Set(tasks.map((t: any) => t.process_id).filter(Boolean))];
+        const processIds = [...new Set(tasks.map((t: any) => t.process_id).filter(Boolean))] as string[];
         let processosMap: Record<string, string> = {};
         
         if (processIds.length > 0) {
+          const quotedIds = processIds.map((id) => `"${id}"`).join(",");
           const processosResponse = await fetch(
-            `${SUPABASE_URL}/rest/v1/processos?id=in.(${processIds.join(",")})&select=id,numero_processo`,
+            `${SUPABASE_URL}/rest/v1/processos?id=in.(${quotedIds})&select=id,numero_processo`,
             {
               headers: {
                 "Content-Type": "application/json",
@@ -305,7 +437,7 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
       console.log("[Alerts] Error fetching processos:", e);
     }
 
-    // Fetch ALL pending signatures from documentos_digitais (FaciliSign)
+    // Fetch ALL pending signatures from documentos_digitais (FaciliSign module)
     try {
       const signaturesResponse = await fetch(
         `${SUPABASE_URL}/rest/v1/documentos_digitais?status=eq.ENVIADO_PARA_ASSINATURA&order=created_at.desc&select=*`,
@@ -321,22 +453,84 @@ app.get("/api/alerts", async (req: Request, res: Response) => {
         const signatures = await signaturesResponse.json();
         signatures.forEach((doc: any) => {
           if (doc.created_at) {
-            // Extract signer info from signatarios array if available
             const signatarios = doc.signatarios || [];
             const signerNames = signatarios.map((s: any) => s.name || s.nome).filter(Boolean).join(", ");
             
             alerts.push({
-              id: `assinatura-${doc.id}`,
+              id: `assinatura-facilisign-${doc.id}`,
               type: "assinatura",
               title: doc.nome || "Documento para assinatura",
-              description: signerNames ? `Signatarios: ${signerNames}` : "Aguardando assinatura",
+              description: signerNames ? `Signatarios: ${signerNames}` : "Aguardando assinatura (FaciliSign)",
               date: doc.created_at,
             });
           }
         });
       }
     } catch (e) {
-      console.log("[Alerts] Error fetching signatures:", e);
+      console.log("[Alerts] Error fetching FaciliSign signatures:", e);
+    }
+
+    // Fetch ALL pending signatures from zapsign_documents (Processos Assinatura tab)
+    try {
+      const processSignaturesResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/zapsign_documents?status=in.(pending,ENVIADO_PARA_ASSINATURA)&order=created_at.desc&select=*`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY || "",
+            "Authorization": authHeader,
+          },
+        }
+      );
+      if (processSignaturesResponse.ok) {
+        const processSignatures = await processSignaturesResponse.json();
+        
+        // Get process numbers for display
+        const processIds = [...new Set(processSignatures.map((d: any) => d.processo_id).filter(Boolean))] as string[];
+        let processosMap: Record<string, string> = {};
+        
+        if (processIds.length > 0) {
+          const quotedIds = processIds.map((id) => `"${id}"`).join(",");
+          const processInfoResponse = await fetch(
+            `${SUPABASE_URL}/rest/v1/processos?id=in.(${quotedIds})&select=id,numero_processo`,
+            {
+              headers: {
+                "Content-Type": "application/json",
+                "apikey": SUPABASE_ANON_KEY || "",
+                "Authorization": authHeader,
+              },
+            }
+          );
+          if (processInfoResponse.ok) {
+            const processInfo = await processInfoResponse.json();
+            processInfo.forEach((p: any) => {
+              processosMap[p.id] = p.numero_processo;
+            });
+          }
+        }
+        
+        processSignatures.forEach((doc: any) => {
+          if (doc.created_at) {
+            const signatarios = doc.signatarios || [];
+            const signerNames = signatarios.map((s: any) => s.name || s.nome).filter(Boolean).join(", ");
+            const processoNumero = processosMap[doc.processo_id] || null;
+            
+            alerts.push({
+              id: `assinatura-processo-${doc.id}`,
+              type: "assinatura",
+              title: doc.nome || "Documento para assinatura",
+              description: signerNames 
+                ? `Signatarios: ${signerNames}${processoNumero ? ` (Processo)` : ""}` 
+                : `Aguardando assinatura${processoNumero ? ` (Processo)` : ""}`,
+              date: doc.created_at,
+              processoId: doc.processo_id,
+              processoNumero: processoNumero,
+            });
+          }
+        });
+      }
+    } catch (e) {
+      console.log("[Alerts] Error fetching Processos signatures:", e);
     }
 
     res.json({ alerts });

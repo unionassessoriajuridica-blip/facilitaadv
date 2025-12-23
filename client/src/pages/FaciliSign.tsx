@@ -87,14 +87,9 @@ const FaciliSign = () => {
   const { toast } = useToast();
 
   const loadDocuments = useCallback(async () => {
-    const docs = await getDocuments(currentPage, pageSize);
-    setDocuments(docs);
-    const { count, error } = await supabase
-      .from("documentos_digitais")
-      .select("id", { count: "exact", head: true });
-    if (!error && count) {
-      setTotalPages(Math.ceil(count / pageSize));
-    }
+    const result = await getDocuments(currentPage, pageSize);
+    setDocuments(result.documents);
+    setTotalPages(result.totalPages);
   }, [getDocuments, currentPage, pageSize]);
 
   useEffect(() => {
@@ -636,6 +631,7 @@ const FaciliSign = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Documento</TableHead>
+                      <TableHead>Origem</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Data</TableHead>
                       <TableHead className="text-right">Acoes</TableHead>
@@ -651,6 +647,22 @@ const FaciliSign = () => {
                               <FileSignature className="w-4 h-4 text-muted-foreground" />
                               <span className="font-medium">{doc.nome}</span>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {doc.source === "processo" ? (
+                              <div className="flex flex-col">
+                                <Badge variant="outline" className="w-fit text-xs">Processo</Badge>
+                                {doc.numero_processo && (
+                                  <span className="text-xs text-muted-foreground mt-1">
+                                    {doc.numero_processo.length > 20 
+                                      ? doc.numero_processo.slice(0, 20) + "..." 
+                                      : doc.numero_processo}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <Badge variant="secondary" className="w-fit text-xs">FaciliSign</Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge className={`${getStatusBadgeColor(doc.status)} flex items-center gap-1 w-fit`}>
