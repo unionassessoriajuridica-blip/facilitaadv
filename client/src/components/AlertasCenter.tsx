@@ -52,6 +52,7 @@ export function AlertasCenter() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
+  const [calendarConnected, setCalendarConnected] = useState<boolean | null>(null);
 
   const loadAlerts = useCallback(async () => {
     if (!user) return;
@@ -113,6 +114,8 @@ export function AlertasCenter() {
         const calendarStatusRes = await fetch("/api/calendar/status");
         const calendarStatus = await calendarStatusRes.json();
         
+        setCalendarConnected(calendarStatus.connected === true);
+        
         if (calendarStatus.connected) {
           // Buscar eventos dos próximos 30 dias
           const now = new Date();
@@ -157,6 +160,7 @@ export function AlertasCenter() {
         }
       } catch (calendarError) {
         console.log("Calendar not connected or error:", calendarError);
+        setCalendarConnected(false);
       }
 
       allAlerts.sort((a, b) => {
@@ -319,6 +323,16 @@ export function AlertasCenter() {
                 {loading ? (
                   <div className="flex items-center justify-center py-8">
                     <Clock className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : tabValue === "evento" && calendarConnected === false ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Calendar className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                    <p className="text-muted-foreground mb-2">
+                      Google Calendar nao conectado
+                    </p>
+                    <p className="text-sm text-muted-foreground/70">
+                      Acesse Configuracoes {">"} Integracoes Google para conectar
+                    </p>
                   </div>
                 ) : filterAlerts(tabValue).length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
