@@ -679,6 +679,9 @@ app.get("/api/google/system/auth-url", async (req: Request, res: Response) => {
     const host = req.headers['x-forwarded-host'] || req.headers.host || req.hostname;
     const redirectUri = `${protocol}://${host}/api/google/system/callback`;
     
+    console.log("[Google System] Generating auth URL with redirect_uri:", redirectUri);
+    console.log("[Google System] Headers - protocol:", protocol, "host:", host);
+    
     const authUrl = googleSystemAuthService.getAuthUrl(redirectUri);
     res.json({ authUrl, redirectUri });
   } catch (error: any) {
