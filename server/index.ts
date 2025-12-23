@@ -8,8 +8,8 @@ import type { ZapsignCreateDocRequest } from "@shared/schema";
 import multer from "multer";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: false, limit: '50mb' }));
 
 // Proxy para Edge Functions do Supabase (evita problemas de CORS)
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
