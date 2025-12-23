@@ -1,5 +1,4 @@
-import * as React from "react";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -83,8 +82,9 @@ interface GoogleCalendarCardProps {
     loadEvents: (calendarId?: string) => Promise<void>;
     createEvent: (eventData: any, calendarId?: string) => Promise<any>;
   };
-  dialogOpen?: boolean;  // New: controlled open state
-  onDialogOpenChange?: (open: boolean) => void;  // New: callback for open changes
+  calendarId?: string;
+  dialogOpen?: boolean;
+  onDialogOpenChange?: (open: boolean) => void;
   initialType?: "audiencia" | "reuniao" | "prazo" | "outros" | null;
 }
 
@@ -102,14 +102,22 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
   const { toast } = useToast();
   const [showNewEventDialog, setShowNewEventDialog] =useState(dialogOpen);
   const [selectedDate, setSelectedDate] = useState<Date>();
-  const [newEvent, setNewEvent] = useState({
+  const [newEvent, setNewEvent] = useState<{
+    title: string;
+    description: string;
+    start: string;
+    end: string;
+    location: string;
+    attendees: string;
+    type: "audiencia" | "reuniao" | "prazo" | "outros";
+  }>({
     title: "",
     description: "",
     start: "",
     end: "",
     location: "",
     attendees: "",
-    type: "reuniao" as const,
+    type: "reuniao",
   });
 
 // Sync internal state with controlled prop
@@ -506,8 +514,10 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
                         {event.title}
                       </h5>
                       {event.description && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {event.description}
+                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                          {event.description.length > 100 
+                            ? event.description.substring(0, 100).replace(/https?:\/\/\S+/g, '[link]') + "..." 
+                            : event.description.replace(/https?:\/\/\S+/g, '[link]')}
                         </p>
                       )}
 
