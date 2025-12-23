@@ -44,6 +44,7 @@ import {
   Database,
   CheckSquare,
   X,
+  Menu,
 } from "lucide-react";
 import {
   Dialog,
@@ -80,6 +81,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [showTarefasModal, setShowTarefasModal] = useState(false);
   const [tarefasComProcessos, setTarefasComProcessos] = useState<any[]>([]);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const {
     canViewAllProcesses: hasGlobalProcessAccess,
@@ -394,15 +396,15 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
       {/* Header */}
-      <header className="w-full bg-slate-900 text-white">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
+      <header className="w-full bg-slate-900 text-white sticky top-0 z-50">
+        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-2 md:gap-4">
           <div className="flex items-center gap-2">
             <Scale className="w-6 h-6 text-amber-400" />
-            <span className="font-bold text-lg">Facilita ADV</span>
+            <span className="font-bold text-lg hidden sm:inline">Facilita ADV</span>
           </div>
 
-          {/* Menu horizontal */}
-          <nav className="hidden md:flex items-center gap-6">
+          {/* Menu horizontal - Desktop */}
+          <nav className="hidden lg:flex items-center gap-6">
             <span className="text-sm text-white font-medium border-b-2 border-amber-400 pb-1">Dashboard</span>
             <button onClick={() => navigate("/processos")} className="text-sm text-amber-400 hover:text-amber-300 transition-colors font-medium">Processos</button>
             <button onClick={() => navigate("/audiencias")} className="text-sm text-amber-400 hover:text-amber-300 transition-colors font-medium">Audiencias</button>
@@ -410,10 +412,10 @@ const Dashboard = () => {
             <button onClick={() => navigate("/user-management")} className="text-sm text-amber-400 hover:text-amber-300 transition-colors font-medium">Configuracoes</button>
           </nav>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <AlertasCenter />
             
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-2">
               <User className="w-5 h-5 text-amber-400" />
               <div className="flex flex-col">
                 <span className="text-sm font-medium">
@@ -427,13 +429,76 @@ const Dashboard = () => {
               variant="outline" 
               size="sm" 
               onClick={signOut}
-              className="border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-900"
+              className="border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-900 hidden sm:flex"
               data-testid="button-sair"
             >
               Sair
             </Button>
+            
+            {/* Mobile Menu Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden text-white"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              data-testid="button-mobile-menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </Button>
           </div>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden bg-slate-800 px-4 py-3 space-y-2 border-t border-slate-700">
+            <button
+              onClick={() => { navigate("/dashboard"); setMobileMenuOpen(false); }}
+              className="block w-full text-left text-sm text-white py-2 font-medium border-l-2 border-amber-400 pl-3"
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => { navigate("/processos"); setMobileMenuOpen(false); }}
+              className="block w-full text-left text-sm text-amber-400 hover:text-amber-300 py-2 font-medium pl-3"
+            >
+              Processos
+            </button>
+            <button
+              onClick={() => { navigate("/audiencias"); setMobileMenuOpen(false); }}
+              className="block w-full text-left text-sm text-amber-400 hover:text-amber-300 py-2 font-medium pl-3"
+            >
+              Audiencias
+            </button>
+            <button
+              onClick={() => { navigate("/financeiro"); setMobileMenuOpen(false); }}
+              className="block w-full text-left text-sm text-amber-400 hover:text-amber-300 py-2 font-medium pl-3"
+            >
+              Financeiro
+            </button>
+            <button
+              onClick={() => { navigate("/user-management"); setMobileMenuOpen(false); }}
+              className="block w-full text-left text-sm text-amber-400 hover:text-amber-300 py-2 font-medium pl-3"
+            >
+              Configuracoes
+            </button>
+            <div className="border-t border-slate-700 pt-3 mt-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-amber-400" />
+                  <span className="text-sm text-white">{user?.email?.split("@")[0] || "Usuario"}</span>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => { signOut(); setMobileMenuOpen(false); }}
+                  className="border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-900"
+                >
+                  Sair
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="container mx-auto px-4 py-6">
@@ -707,15 +772,16 @@ const Dashboard = () => {
               </p>
             ) : (
               <>
+                <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>AÇÕES</TableHead>
-                      <TableHead>Nº PROCESSO</TableHead>
-                      <TableHead>CLIENTE</TableHead>
-                      <TableHead>TIPO DO PROCESSO</TableHead>
-                      <TableHead>CLIENTE PRESO</TableHead>
-                      <TableHead>PRAZO</TableHead>
+                      <TableHead className="whitespace-nowrap">AÇÕES</TableHead>
+                      <TableHead className="whitespace-nowrap">Nº PROCESSO</TableHead>
+                      <TableHead className="whitespace-nowrap">CLIENTE</TableHead>
+                      <TableHead className="whitespace-nowrap hidden sm:table-cell">TIPO DO PROCESSO</TableHead>
+                      <TableHead className="whitespace-nowrap hidden md:table-cell">CLIENTE PRESO</TableHead>
+                      <TableHead className="whitespace-nowrap">PRAZO</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -754,7 +820,7 @@ const Dashboard = () => {
                         <TableCell>
                           {processo.clientes?.nome || "Cliente não encontrado"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell">
                           <Badge
                             variant="outline"
                             className="bg-primary/10 text-primary border-primary/20"
@@ -762,7 +828,7 @@ const Dashboard = () => {
                             {processo.tipo_processo}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <Badge
                             variant="outline"
                             className={
@@ -820,8 +886,9 @@ const Dashboard = () => {
                     ))}
                   </TableBody>
                 </Table>
+                </div>
                 {/* Controles de paginação */}
-                <div className="flex justify-between items-center mt-4">
+                <div className="flex justify-between items-center mt-4 gap-2">
                   <Button
                     variant="outline"
                     size="sm"
