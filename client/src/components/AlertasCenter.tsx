@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { googleCalendarSecure } from "@/services/googleCalendarSecureService";
 import { format, isToday, isTomorrow, isPast, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -109,51 +108,52 @@ export function AlertasCenter() {
         }
       }
 
+      // Buscar eventos do calendário via API do sistema
       try {
-        const isConnected = await googleCalendarSecure.isConnected();
-        if (isConnected) {
-          const events = await googleCalendarSecure.listEvents(50);
-          events.forEach((event: any) => {
-            try {
-              let eventDate: Date;
-              let isAllDay = false;
-              
-              if (typeof event.start === "string") {
-                if (event.start.includes("T")) {
-                  eventDate = new Date(event.start);
-                } else {
-                  const [year, month, day] = event.start.split("-").map(Number);
-                  eventDate = new Date(year, month - 1, day, 12, 0, 0);
-                  isAllDay = true;
-                }
-              } else if (typeof event.start === "object" && event.start !== null) {
-                if (event.start.dateTime) {
+        const calendarStatusRes = await fetch("/api/calendar/status");
+        const calendarStatus = await calendarStatusRes.json();
+        
+        if (calendarStatus.connected) {
+          // Buscar eventos dos próximos 30 dias
+          const now = new Date();
+          const futureDate = new Date();
+          futureDate.setDate(futureDate.getDate() + 30);
+          
+          const eventsRes = await fetch(`/api/calendar/events?timeMin=${now.toISOString()}&timeMax=${futureDate.toISOString()}`);
+          if (eventsRes.ok) {
+            const eventsData = await eventsRes.json();
+            const events = eventsData.events || [];
+            
+            events.forEach((event: any) => {
+              try {
+                let eventDate: Date;
+                let isAllDay = false;
+                
+                if (event.start?.dateTime) {
                   eventDate = new Date(event.start.dateTime);
-                } else if (event.start.date) {
+                } else if (event.start?.date) {
                   const [year, month, day] = event.start.date.split("-").map(Number);
                   eventDate = new Date(year, month - 1, day, 12, 0, 0);
                   isAllDay = true;
                 } else {
                   return;
                 }
-              } else {
-                return;
+                
+                if (!isNaN(eventDate.getTime())) {
+                  allAlerts.push({
+                    id: `evento-${event.id}`,
+                    type: "evento",
+                    title: event.summary || "Evento",
+                    description: event.description || undefined,
+                    date: eventDate,
+                    isAllDay,
+                  });
+                }
+              } catch (e) {
+                console.warn("Invalid calendar event:", event.id);
               }
-              
-              if (!isNaN(eventDate.getTime())) {
-                allAlerts.push({
-                  id: `evento-${event.id}`,
-                  type: "evento",
-                  title: event.summary || event.title || "Evento",
-                  description: event.description || undefined,
-                  date: eventDate,
-                  isAllDay,
-                });
-              }
-            } catch (e) {
-              console.warn("Invalid calendar event:", event.id);
-            }
-          });
+            });
+          }
         }
       } catch (calendarError) {
         console.log("Calendar not connected or error:", calendarError);
