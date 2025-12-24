@@ -415,13 +415,30 @@ const Dashboard = () => {
           <div className="flex items-center gap-2 md:gap-4">
             <AlertasCenter />
             
-            <div className="hidden md:flex items-center gap-2">
-              <User className="w-5 h-5 text-amber-400" />
+            <div 
+              className="hidden md:flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => navigate("/perfil")}
+              data-testid="button-profile"
+            >
+              {user?.avatar_url ? (
+                <img 
+                  src={user.avatar_url} 
+                  alt={user.nome || "Avatar"} 
+                  className="w-8 h-8 rounded-full object-cover"
+                />
+              ) : (
+                <User className="w-5 h-5 text-amber-400" />
+              )}
               <div className="flex flex-col">
                 <span className="text-sm font-medium">
-                  {user?.email?.split("@")[0] || "Usuario"}
+                  {user?.nome || user?.email?.split("@")[0] || "Usuario"}
                 </span>
-                <span className="text-xs text-gray-400">Advogado</span>
+                <span className="text-xs text-gray-400">
+                  {user?.funcao === "administrador" ? "Administrador" :
+                   user?.funcao === "assessor_financeiro" ? "Assessor Financeiro" :
+                   user?.funcao === "assessor_juridico" ? "Assessor Juridico" :
+                   "Advogado(a)"}
+                </span>
               </div>
             </div>
 
@@ -483,9 +500,29 @@ const Dashboard = () => {
             </button>
             <div className="border-t border-slate-700 pt-3 mt-3">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <User className="w-4 h-4 text-amber-400" />
-                  <span className="text-sm text-white">{user?.email?.split("@")[0] || "Usuario"}</span>
+                <div 
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => { navigate("/perfil"); setMobileMenuOpen(false); }}
+                  data-testid="button-profile-mobile"
+                >
+                  {user?.avatar_url ? (
+                    <img 
+                      src={user.avatar_url} 
+                      alt={user.nome || "Avatar"} 
+                      className="w-6 h-6 rounded-full object-cover"
+                    />
+                  ) : (
+                    <User className="w-4 h-4 text-amber-400" />
+                  )}
+                  <div className="flex flex-col">
+                    <span className="text-sm text-white">{user?.nome || user?.email?.split("@")[0] || "Usuario"}</span>
+                    <span className="text-xs text-gray-400">
+                      {user?.funcao === "administrador" ? "Administrador" :
+                       user?.funcao === "assessor_financeiro" ? "Assessor Fin." :
+                       user?.funcao === "assessor_juridico" ? "Assessor Jur." :
+                       "Advogado(a)"}
+                    </span>
+                  </div>
                 </div>
                 <Button 
                   variant="outline" 

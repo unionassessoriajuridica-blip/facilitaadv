@@ -31,6 +31,7 @@ import MigratePermissions from "./pages/MigratePermissions.tsx";
 import WhatsAppManagement from "./pages/WhatsAppManagement.tsx";
 import ProcessosPrazos from "./pages/ProcessosPrazos.tsx";
 import AudienciasProximas from "./pages/AudienciasProximas.tsx";
+import UserProfile from "./pages/UserProfile.tsx";
 
 const queryClient = new QueryClient();
 
@@ -54,7 +55,6 @@ const App = () => (
           {/* Rotas Protegidas */}
           <Route element={<PrivateRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
-            // No App.tsx, adicione temporariamente:
             <Route path="/migrate-permissions" element={<MigratePermissions />} />
             <Route path="/user-management" element={<UserManagement />} />
             <Route path="/novo-processo" element={<NewProcess />} />
@@ -71,6 +71,7 @@ const App = () => (
             <Route path="/whatsapp" element={<WhatsAppManagement />} />
             <Route path="/processos" element={<ProcessosPrazos />} />
             <Route path="/audiencias" element={<AudienciasProximas />} />
+            <Route path="/perfil" element={<UserProfile />} />
           </Route>
 
           {/* Outras Rotas */}

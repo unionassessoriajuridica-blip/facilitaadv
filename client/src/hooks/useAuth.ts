@@ -7,6 +7,8 @@ interface User {
   email: string;
   nome: string | null;
   role: string | null;
+  funcao: string | null;
+  avatar_url: string | null;
 }
 
 export const useAuth = () => {
@@ -23,6 +25,8 @@ export const useAuth = () => {
           email: session.user.email || '',
           nome: session.user.user_metadata?.nome || session.user.user_metadata?.full_name || null,
           role: session.user.user_metadata?.role || 'user',
+          funcao: session.user.user_metadata?.funcao || 'advogado',
+          avatar_url: session.user.user_metadata?.avatar_url || null,
         };
         setUser(userData);
       } else {
@@ -47,6 +51,8 @@ export const useAuth = () => {
             email: session.user.email || '',
             nome: session.user.user_metadata?.nome || session.user.user_metadata?.full_name || null,
             role: session.user.user_metadata?.role || 'user',
+            funcao: session.user.user_metadata?.funcao || 'advogado',
+            avatar_url: session.user.user_metadata?.avatar_url || null,
           };
           setUser(userData);
         } else {

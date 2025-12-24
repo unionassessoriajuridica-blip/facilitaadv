@@ -1,5 +1,4 @@
 import * as React from "react";
-import React from "react";
 import { Lock, LogOut, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth.ts";
 import { Button } from "@/components/ui/button.tsx";
