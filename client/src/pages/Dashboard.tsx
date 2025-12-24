@@ -663,20 +663,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Action Buttons - Pills */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {hasPermission("novo_processo") && (
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-full"
-              onClick={() => navigate("/novo-processo")}
-              data-testid="button-novo-processo"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Processo
-            </Button>
-          )}
-        </div>
-
         {/* Processes Section */}
         <Card className="bg-white dark:bg-slate-800 shadow-sm">
           <CardHeader className="pb-2">
