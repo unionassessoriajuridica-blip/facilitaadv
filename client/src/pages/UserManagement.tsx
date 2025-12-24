@@ -1,5 +1,4 @@
-import * as React from "react";
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx';
 import { Button } from '@/components/ui/button.tsx';
@@ -13,6 +12,7 @@ import { ArrowLeft, Plus, Users, Mail, Settings, Trash2, Shield, CheckCircle, Cl
 import { useToast } from '@/hooks/use-toast.ts';
 import { supabase } from '@/integrations/supabase/client.ts';
 import { useAuth } from '@/hooks/useAuth.ts';
+import { AppHeader } from '@/components/AppHeader';
 
 interface UserInvitation {
   id: string;
@@ -235,18 +235,13 @@ const UserManagement = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppHeader />
       <div className="container mx-auto px-6 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={() => navigate('/dashboard')}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Voltar
-            </Button>
-            <div className="flex items-center gap-2">
-              <Users className="w-6 h-6 text-primary" />
-              <h1 className="text-2xl font-bold">Gerenciamento de Usuários</h1>
-              <Badge className="bg-primary/10 text-primary">MASTER</Badge>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Users className="w-6 h-6 text-primary" />
+            <h1 className="text-xl sm:text-2xl font-bold">Gerenciamento de Usuarios</h1>
+            <Badge className="bg-primary/10 text-primary">MASTER</Badge>
           </div>
 
           <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>

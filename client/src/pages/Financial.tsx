@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { useFinanceiroData, useClientesData } from "@/hooks/useFinanceiroData";
+import { AppHeader } from "@/components/AppHeader";
 
 const Financial = () => {
   const navigate = useNavigate();
@@ -192,14 +193,9 @@ const Financial = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <AppHeader />
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-6">
-          <Button variant="outline" onClick={() => navigate("/dashboard")} size="sm">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-          <h1 className="text-xl sm:text-2xl font-bold">Gestão Financeira</h1>
-        </div>
+        <h1 className="text-xl sm:text-2xl font-bold mb-6">Gestao Financeira</h1>
 
         {/* Cards de Resumo usando o componente */}
         <FinanceiroSummary

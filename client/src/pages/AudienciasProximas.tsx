@@ -14,8 +14,9 @@ import {
   TableRow,
 } from "@/components/ui/table.tsx";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs.tsx";
-import { Scale, ArrowLeft, Calendar, Clock, Gavel, User } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Gavel } from "lucide-react";
 import { useGlobalAccess } from "@/utils/accessUtils.ts";
+import { AppHeader } from "@/components/AppHeader";
 
 interface Processo {
   id: string;
@@ -171,43 +172,7 @@ const AudienciasProximas = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
-      <header className="w-full bg-slate-900 text-white">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Scale className="w-6 h-6 text-amber-400" />
-            <span className="font-bold text-lg">Facilita ADV</span>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-6">
-            <button onClick={() => navigate("/dashboard")} className="text-sm text-amber-400 hover:text-amber-300 transition-colors font-medium" data-testid="nav-dashboard">Dashboard</button>
-            <button onClick={() => navigate("/processos")} className="text-sm text-amber-400 hover:text-amber-300 transition-colors font-medium" data-testid="nav-processos">Processos</button>
-            <span className="text-sm text-white font-medium border-b-2 border-amber-400 pb-1">Audiencias</span>
-            <button onClick={() => navigate("/financeiro")} className="text-sm text-amber-400 hover:text-amber-300 transition-colors font-medium" data-testid="nav-financeiro">Financeiro</button>
-            <button onClick={() => navigate("/user-management")} className="text-sm text-amber-400 hover:text-amber-300 transition-colors font-medium" data-testid="nav-configuracoes">Configuracoes</button>
-          </nav>
-
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-amber-400" />
-              <div className="flex flex-col">
-                <span className="text-sm font-medium">
-                  {user?.email?.split("@")[0] || "Usuario"}
-                </span>
-                <span className="text-xs text-gray-400">Advogado</span>
-              </div>
-            </div>
-
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={signOut}
-              className="border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-900"
-            >
-              Sair
-            </Button>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       <div className="container mx-auto px-4 py-6">
         <div className="flex items-center gap-4 mb-6">
