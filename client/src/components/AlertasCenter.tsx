@@ -225,6 +225,19 @@ export function AlertasCenter() {
   };
 
   const handleAlertClick = (alert: AlertItem) => {
+    if (alert.type === "assinatura") {
+      // Documentos de assinatura: verificar origem
+      if (alert.processoId) {
+        // Documento veio de um processo - navegar para o processo na aba de assinatura
+        navigate(`/processo/${alert.processoId}`);
+      } else {
+        // Documento veio do FaciliSign diretamente
+        navigate("/facilisign");
+      }
+      setIsOpen(false);
+      return;
+    }
+    
     if (alert.processoId) {
       navigate(`/processo/${alert.processoId}`);
       setIsOpen(false);

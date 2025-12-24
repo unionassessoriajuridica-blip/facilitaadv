@@ -296,32 +296,87 @@ const FaciliSign = () => {
   };
 
   const handleViewDocument = async (doc: DocumentoFaciliSign) => {
-    if (doc.signed_file_url) {
-      window.open(doc.signed_file_url, "_blank");
-    } else if (doc.original_file_url) {
-      window.open(doc.original_file_url, "_blank");
-    } else {
+    if (!doc.zapsign_token) {
       toast({
-        title: "Informacao",
-        description: "Documento nao disponivel para visualizacao.",
+        title: "Erro",
+        description: "Token do documento nao encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Buscar dados atualizados do ZapSign para obter URLs validas
+      const response = await fetch(`/api/zapsign/documents/${doc.zapsign_token}`);
+      
+      if (!response.ok) {
+        throw new Error("Falha ao buscar documento");
+      }
+      
+      const zapsignDoc = await response.json();
+      
+      // Usar URL assinada se disponivel, senao usar original
+      const viewUrl = zapsignDoc.signed_file || zapsignDoc.original_file;
+      
+      if (viewUrl) {
+        window.open(viewUrl, "_blank");
+      } else {
+        toast({
+          title: "Informacao",
+          description: "Documento nao disponivel para visualizacao.",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao buscar documento:", error);
+      toast({
+        title: "Erro",
+        description: "Nao foi possivel obter o documento. Tente novamente.",
+        variant: "destructive",
       });
     }
   };
 
   const handleDownloadDocument = async (doc: DocumentoFaciliSign) => {
-    const url = doc.signed_file_url || doc.original_file_url;
-    if (url) {
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${doc.nome}.pdf`;
-      link.target = "_blank";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else {
+    if (!doc.zapsign_token) {
       toast({
-        title: "Informacao",
-        description: "Documento nao disponivel para download.",
+        title: "Erro",
+        description: "Token do documento nao encontrado.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Buscar dados atualizados do ZapSign para obter URLs validas
+      const response = await fetch(`/api/zapsign/documents/${doc.zapsign_token}`);
+      
+      if (!response.ok) {
+        throw new Error("Falha ao buscar documento");
+      }
+      
+      const zapsignDoc = await response.json();
+      const url = zapsignDoc.signed_file || zapsignDoc.original_file;
+      
+      if (url) {
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${doc.nome}.pdf`;
+        link.target = "_blank";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        toast({
+          title: "Informacao",
+          description: "Documento nao disponivel para download.",
+        });
+      }
+    } catch (error) {
+      console.error("Erro ao baixar documento:", error);
+      toast({
+        title: "Erro",
+        description: "Nao foi possivel baixar o documento. Tente novamente.",
+        variant: "destructive",
       });
     }
   };
