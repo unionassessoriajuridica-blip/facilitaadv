@@ -675,54 +675,6 @@ const Dashboard = () => {
               Novo Processo
             </Button>
           )}
-
-          {hasPermission("financeiro") && (
-            <Button 
-              className="bg-green-600 hover:bg-green-700 text-white rounded-full"
-              onClick={() => navigate("/financeiro")}
-              data-testid="button-financeiro"
-            >
-              <DollarSign className="w-4 h-4 mr-2" />
-              Financeiro
-            </Button>
-          )}
-
-          {hasPermission("facilisign") && (
-            <Button
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full"
-              onClick={() => navigate("/facilisign")}
-              data-testid="button-facilisign"
-            >
-              <PenTool className="w-4 h-4 mr-2" />
-              FaciliSign
-            </Button>
-          )}
-
-          {hasPermission("google_integration") && (
-            <Button
-              variant="outline"
-              className="rounded-full"
-              onClick={() => navigate("/google-integration")}
-              data-testid="button-google"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Integracao Google
-            </Button>
-          )}
-
-          {hasPermission("agenda") && (
-            <Button
-              variant="outline"
-              className="rounded-full"
-              onClick={() => navigate("/calendar")}
-              data-testid="button-agenda"
-            >
-              <Calendar className="w-4 h-4 mr-2" />
-              Agenda
-            </Button>
-          )}
-
-          <ClienteDataButton />
         </div>
 
         {/* Processes Section */}
