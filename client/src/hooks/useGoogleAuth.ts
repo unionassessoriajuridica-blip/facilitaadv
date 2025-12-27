@@ -141,18 +141,39 @@ export const useGoogleAuth = (config: GoogleAuthConfig): GoogleAuthReturn => {
         setState((prev) => ({ ...prev, gsiLoaded: true }));
       }
 
-      // 2. Verifica se há um token armazenado
+      // 2. Verifica se há integração de sistema (Global)
+      try {
+        const sysResponse = await fetch('/api/google/system/status');
+        const sysData = await sysResponse.json();
+        if (sysData.connected) {
+          setState((prev) => ({
+            ...prev,
+            isAuthenticated: true,
+            isLoading: false,
+            userInfo: sysData.email ? {
+              id: 'system',
+              name: 'Sistema (Global)',
+              email: sysData.email
+            } : prev.userInfo
+          }));
+          return; // Conexão global tem prioridade
+        }
+      } catch (error) {
+        console.error("Erro ao verificar status do sistema:", error);
+      }
+
+      // 3. Verifica se há um token armazenado (Local)
       const storedToken = localStorage.getItem("google_access_token");
 
       if (storedToken) {
         try {
           setState((prev) => ({ ...prev, isLoading: true }));
 
-          // 3. Verifica se o token ainda é válido
+          // 4. Verifica se o token ainda é válido
           const tokenValid = await verifyToken(storedToken);
 
           if (tokenValid) {
-            // 4. Atualiza o estado e busca informações do usuário
+            // 5. Atualiza o estado e busca informações do usuário
             setState((prev) => ({
               ...prev,
               accessToken: storedToken,
@@ -162,7 +183,7 @@ export const useGoogleAuth = (config: GoogleAuthConfig): GoogleAuthReturn => {
 
             await fetchUserInfo(storedToken);
           } else {
-            // 5. Token inválido - limpa o storage
+            // 6. Token inválido - limpa o storage
             localStorage.removeItem("google_access_token");
           }
         } catch (error) {

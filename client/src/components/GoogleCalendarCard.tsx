@@ -74,33 +74,28 @@ interface GoogleCalendarCardProps {
     isLoading: boolean;
     signIn: () => Promise<void>;
     signOut: () => Promise<void>;
-    getAccessToken: () => string | null;
+    userInfo?: { name: string; id: string; email?: string } | null;
   };
   googleCalendar: {
     events: CalendarEvent[];
     loading: boolean;
-    loadEvents: (calendarId?: string) => Promise<void>;
-    createEvent: (eventData: any, calendarId?: string) => Promise<any>;
+    loadEvents: (facilitaOnly?: boolean) => Promise<any>;
+    createEvent: (eventData: any) => Promise<any>;
   };
-  calendarId?: string;
   dialogOpen?: boolean;
   onDialogOpenChange?: (open: boolean) => void;
   initialType?: "audiencia" | "reuniao" | "prazo" | "outros" | null;
 }
 
 export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
-  isConnected = false,
-  onConnect,
-  onDisconnect,
-  googleAuth, // ← AGORA RECEBENDO
-  googleCalendar, // ← AGORA RECEBENDO
-  calendarId = "primary",
+  googleAuth,
+  googleCalendar,
   dialogOpen = false,
   onDialogOpenChange,
   initialType = null,
 }) => {
   const { toast } = useToast();
-  const [showNewEventDialog, setShowNewEventDialog] =useState(dialogOpen);
+  const [showNewEventDialog, setShowNewEventDialog] = useState(dialogOpen);
   const [selectedDate, setSelectedDate] = useState<Date>();
   const [newEvent, setNewEvent] = useState<{
     title: string;
@@ -120,7 +115,7 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
     type: "reuniao",
   });
 
-// Sync internal state with controlled prop
+  // Sync internal state with controlled prop
   useEffect(() => {
     setShowNewEventDialog(dialogOpen);
   }, [dialogOpen]);
@@ -140,9 +135,9 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
 
   useEffect(() => {
     if (googleAuth.isAuthenticated) {
-      googleCalendar.loadEvents(calendarId);
+      googleCalendar.loadEvents();
     }
-  }, [googleAuth.isAuthenticated, calendarId]);
+  }, [googleAuth.isAuthenticated]);
 
   const handleCreateEvent = async () => {
     if (!newEvent.title || !newEvent.start || !newEvent.end) {
@@ -165,7 +160,7 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
         : [],
     };
 
-    const success = await googleCalendar.createEvent(eventData, calendarId);
+    const success = await googleCalendar.createEvent(eventData);
 
     if (success) {
       handleDialogOpenChange(false);
@@ -261,13 +256,13 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
           </div>
 
           <Button
-            onClick={googleAuth.signIn}
+            onClick={onConnect}
             disabled={googleAuth.isLoading}
             className="w-full"
           >
             <Calendar className="w-4 h-4 mr-2" />
             {googleAuth.isLoading
-              ? "Conectando..."
+              ? "Verificando..."
               : "Conectar Google Calendar"}
           </Button>
         </CardContent>
@@ -515,8 +510,8 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
                       </h5>
                       {event.description && (
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          {event.description.length > 100 
-                            ? event.description.substring(0, 100).replace(/https?:\/\/\S+/g, '[link]') + "..." 
+                          {event.description.length > 100
+                            ? event.description.substring(0, 100).replace(/https?:\/\/\S+/g, '[link]') + "..."
                             : event.description.replace(/https?:\/\/\S+/g, '[link]')}
                         </p>
                       )}
@@ -552,10 +547,17 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
 
         <div className="pt-4 border-t">
           <div className="flex items-center justify-between text-sm">
-            <Button variant="outline" size="sm" onClick={googleAuth.signOut}>
-              <Settings className="w-4 h-4 mr-2" />
-              Desconectar
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={onDisconnect}>
+                <Settings className="w-4 h-4 mr-2" />
+                Configurações
+              </Button>
+              {googleAuth.userInfo?.email && (
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  {googleAuth.userInfo.email}
+                </span>
+              )}
+            </div>
 
             <Button variant="ghost" size="sm" asChild>
               <a

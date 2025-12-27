@@ -55,7 +55,7 @@ const CalendarManagement = () => {
     "audiencia" | "reuniao" | "prazo" | "outros" | null
   >(null);
 
-  const googleCalendar = useGoogleCalendar(googleAuth.getAccessToken());
+  const googleCalendar = useGoogleCalendar();
 
   // Função para atualizar estatísticas
   const updateStatistics = useCallback((events: any[]) => {
@@ -67,7 +67,6 @@ const CalendarManagement = () => {
     };
 
     events.forEach((event) => {
-      // Verifica se o evento tem a propriedade 'type'
       if (event.type) {
         switch (event.type) {
           case "audiencia":
@@ -84,7 +83,6 @@ const CalendarManagement = () => {
             break;
         }
       } else {
-        // Se não tiver type, conta como "outros"
         newStats.others++;
       }
     });
@@ -92,13 +90,13 @@ const CalendarManagement = () => {
     setStats(newStats);
   }, []);
 
+  // Função para carregar dados
   const loadCalendarData = useCallback(async () => {
     if (!googleAuth.isAuthenticated) return;
 
     setIsLoading(true);
     try {
       const events = await googleCalendar.loadEvents();
-      console.log("Eventos carregados:", events);
       updateStatistics(events);
     } catch (error) {
       console.error("Erro ao carregar eventos:", error);
@@ -112,6 +110,13 @@ const CalendarManagement = () => {
     }
   }, [googleAuth.isAuthenticated, googleCalendar, updateStatistics]);
 
+  // Sincroniza quando autenticação ou diálogo mudar
+  useEffect(() => {
+    if (googleAuth.isAuthenticated) {
+      loadCalendarData();
+    }
+  }, [googleAuth.isAuthenticated, loadCalendarData]);
+
   // Adicione este useEffect para resetar o initialEventType quando o diálogo fechar
   useEffect(() => {
     if (!dialogOpen) {
@@ -119,10 +124,9 @@ const CalendarManagement = () => {
     }
   }, [dialogOpen]);
 
-  // Modifique o useEffect que pre-seta o tipo para incluir uma verificação adicional
+  // Gerencia o tipo inicial
   useEffect(() => {
     if (dialogOpen && initialEventType) {
-      // Força um pequeno delay para garantir que o diálogo esteja completamente aberto
       const timer = setTimeout(() => {
         setInitialEventType(initialEventType);
       }, 100);
@@ -130,65 +134,13 @@ const CalendarManagement = () => {
     }
   }, [dialogOpen, initialEventType]);
 
-  useEffect(() => {
-    if (googleCalendar.events.length > 0) {
-      updateStatistics(googleCalendar.events);
-    }
-  }, [googleCalendar.events, updateStatistics]);
-
-  // Carrega dados quando autenticação muda
-  useEffect(() => {
-    // Verifica se já existe um token no localStorage
-    const token = localStorage.getItem("google_access_token");
-    if (token && !googleAuth.isAuthenticated) {
-      googleAuth.setAccessToken(token);
-      googleAuth.setIsAuthenticated(true);
-    }
-  }, [googleAuth]);
-
   // Manipuladores de conexão
-  const handleConnectGoogle = async () => {
-    try {
-      const client = google.accounts.oauth2.initTokenClient({
-        client_id: googleAuth.clientId,
-        scope: "email profile https://www.googleapis.com/auth/calendar",
-        callback: async (tokenResponse) => {
-          if (tokenResponse?.access_token) {
-            googleAuth.setAccessToken(tokenResponse.access_token);
-            googleAuth.setIsAuthenticated(true);
-            await loadCalendarData();
-            Swal.fire({
-              title: "Conectado!",
-              text: "Sua conta Google foi conectada com sucesso",
-              icon: "success",
-            });
-          }
-        },
-        error_callback: (error) => {
-          Swal.fire({
-            title: "Erro",
-            text: error.message || "Falha na conexão com o Google",
-            icon: "error",
-          });
-        },
-      });
-      client.requestAccessToken();
-    } catch (error) {
-      Swal.fire({
-        title: "Erro",
-        text: "Falha ao iniciar o processo de conexão",
-        icon: "error",
-      });
-    }
+  const handleConnectGoogle = () => {
+    navigate('/google-integration');
   };
 
-  const handleDisconnectGoogle = async () => {
-    await googleAuth.signOut();
-    Swal.fire({
-      title: "Desconectado",
-      text: "Sua conta Google foi desconectada",
-      icon: "info",
-    });
+  const handleDisconnectGoogle = () => {
+    navigate('/google-integration');
   };
 
   // Formata os próximos eventos para exibição
