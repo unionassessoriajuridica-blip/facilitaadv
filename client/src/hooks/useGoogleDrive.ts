@@ -28,10 +28,11 @@ export function useGoogleDrive() {
     try {
       const response = await fetch('/api/google/drive/status');
       const data = await response.json();
+      console.log("[useGoogleDrive] Connection check result:", data);
       setIsConnected(data.connected);
       return data.connected;
     } catch (error) {
-      console.error('Failed to check Drive connection:', error);
+      console.error('[useGoogleDrive] Failed to check Drive connection:', error);
       setIsConnected(false);
       return false;
     }
