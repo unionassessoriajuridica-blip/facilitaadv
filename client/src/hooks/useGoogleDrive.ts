@@ -26,7 +26,7 @@ export function useGoogleDrive() {
 
   const checkConnection = useCallback(async (): Promise<boolean> => {
     try {
-      const response = await fetch('/api/drive/status');
+      const response = await fetch('/api/google/drive/status');
       const data = await response.json();
       setIsConnected(data.connected);
       return data.connected;
@@ -40,13 +40,13 @@ export function useGoogleDrive() {
   const getOrCreateRootFolder = useCallback(async (): Promise<string | null> => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/drive/root-folder');
-      
+      const response = await fetch('/api/google/drive/root-folder');
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to get root folder');
       }
-      
+
       const data = await response.json();
       return data.folderId;
     } catch (error: any) {
@@ -65,13 +65,13 @@ export function useGoogleDrive() {
   const getOrCreateProcessFolder = useCallback(async (numeroProcesso: string): Promise<string | null> => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/drive/process-folder/${encodeURIComponent(numeroProcesso)}`);
-      
+      const response = await fetch(`/api/google/drive/process-folder/${encodeURIComponent(numeroProcesso)}`);
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to get process folder');
       }
-      
+
       const data = await response.json();
       return data.folderId;
     } catch (error: any) {
@@ -107,7 +107,7 @@ export function useGoogleDrive() {
         setUploadProgress(prev => Math.min(prev + 10, 80));
       }, 200);
 
-      const response = await fetch('/api/drive/upload', {
+      const response = await fetch('/api/google/drive/upload', {
         method: 'POST',
         body: formData,
       });
@@ -155,7 +155,7 @@ export function useGoogleDrive() {
         setUploadProgress(prev => Math.min(prev + 10, 80));
       }, 200);
 
-      const response = await fetch('/api/drive/upload-from-url', {
+      const response = await fetch('/api/google/drive/upload-from-url', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -196,13 +196,13 @@ export function useGoogleDrive() {
   const listFolderFiles = useCallback(async (folderId: string): Promise<DriveFile[]> => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/drive/folder/${folderId}/files`);
-      
+      const response = await fetch(`/api/google/drive/folder/${folderId}/files`);
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to list files');
       }
-      
+
       return await response.json();
     } catch (error: any) {
       console.error('Failed to list folder files:', error);
@@ -220,13 +220,13 @@ export function useGoogleDrive() {
   const listProcessFolders = useCallback(async (): Promise<DriveFile[]> => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/drive/process-folders');
-      
+      const response = await fetch('/api/google/drive/process-folders');
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to list folders');
       }
-      
+
       return await response.json();
     } catch (error: any) {
       console.error('Failed to list process folders:', error);
@@ -238,20 +238,20 @@ export function useGoogleDrive() {
 
   const deleteFile = useCallback(async (fileId: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/drive/files/${fileId}`, {
+      const response = await fetch(`/api/google/drive/files/${fileId}`, {
         method: 'DELETE',
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to delete file');
       }
-      
+
       toast({
         title: 'Arquivo removido',
         description: 'Arquivo removido do Google Drive',
       });
-      
+
       return true;
     } catch (error: any) {
       console.error('Failed to delete file:', error);
@@ -266,13 +266,13 @@ export function useGoogleDrive() {
 
   const getFileDetails = useCallback(async (fileId: string): Promise<DriveFile | null> => {
     try {
-      const response = await fetch(`/api/drive/files/${fileId}`);
-      
+      const response = await fetch(`/api/google/drive/files/${fileId}`);
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to get file details');
       }
-      
+
       return await response.json();
     } catch (error: any) {
       console.error('Failed to get file details:', error);

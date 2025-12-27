@@ -332,7 +332,7 @@ export function ProcessoArquivos({
             <div>
               <p className="font-medium text-yellow-700">Google Drive não conectado</p>
               <p className="text-sm text-muted-foreground">
-                Conecte o Google Drive nas integrações do Replit para sincronizar
+                Conecte o Google Drive nas Configurações do Sistema para sincronizar
                 automaticamente os arquivos.
               </p>
             </div>
