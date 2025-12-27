@@ -46,7 +46,7 @@ export interface ProcessoDatajud {
 class DatajudService {
   private static instance: DatajudService;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): DatajudService {
     if (!DatajudService.instance) {
@@ -57,22 +57,23 @@ class DatajudService {
 
   async lookupProcess(processNumber: string, processoId?: string): Promise<DatajudResponse> {
     const { data: { session } } = await supabase.auth.getSession();
-    
+
     if (!session?.access_token) {
       return { success: false, error: "Usuário não autenticado" };
     }
 
     try {
-      const response = await fetch(EDGE_FUNCTION_URL, {
+      // Usar rota local do servidor (bypass CORS + RLS)
+      const response = await fetch("/api/datajud/lookup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ 
-          action: "lookup", 
+        body: JSON.stringify({
+          action: "lookup",
           processNumber,
-          processoId 
+          processoId
         }),
       });
 
@@ -85,9 +86,9 @@ class DatajudService {
       return data;
     } catch (error) {
       console.error("Erro ao consultar DataJud:", error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Erro desconhecido" 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Erro desconhecido"
       };
     }
   }
@@ -103,14 +104,14 @@ class DatajudService {
 
   formatDataAjuizamento(dataAjuizamento: string | null): string {
     if (!dataAjuizamento) return "-";
-    
+
     if (dataAjuizamento.length === 14) {
       const year = dataAjuizamento.substring(0, 4);
       const month = dataAjuizamento.substring(4, 6);
       const day = dataAjuizamento.substring(6, 8);
       return `${day}/${month}/${year}`;
     }
-    
+
     try {
       const date = new Date(dataAjuizamento);
       return date.toLocaleDateString('pt-BR');

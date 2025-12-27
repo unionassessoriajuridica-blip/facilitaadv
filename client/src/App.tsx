@@ -32,64 +32,73 @@ import WhatsAppManagement from "./pages/WhatsAppManagement.tsx";
 import ProcessosPrazos from "./pages/ProcessosPrazos.tsx";
 import AudienciasProximas from "./pages/AudienciasProximas.tsx";
 import UserProfile from "./pages/UserProfile.tsx";
+import MtdDocs from "./pages/MtdDocs.tsx";
+import PrazosDashboard from "./pages/PrazosDashboard.tsx";
+import { LoadingProvider } from "./contexts/LoadingContext.tsx";
+import { GlobalLoader } from "./components/GlobalLoader.tsx";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          {/* Rotas Públicas */}
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/termos-servico" element={<TermosServico />} />
-          <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
-          <Route path="/contato" element={<Contato />} />
-          <Route path="/sobre" element={<Sobre />} />
-          <Route path="/servicos" element={<Servicos />} />
+    <LoadingProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <GlobalLoader />
+        <BrowserRouter>
+          <Routes>
+            {/* Rotas Públicas */}
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/termos-servico" element={<TermosServico />} />
+            <Route path="/politica-privacidade" element={<PoliticaPrivacidade />} />
+            <Route path="/contato" element={<Contato />} />
+            <Route path="/sobre" element={<Sobre />} />
+            <Route path="/servicos" element={<Servicos />} />
             <Route path="/accept-invitation" element={<AcceptInvitation />} />
 
-          {/* Rotas Protegidas */}
-          <Route element={<PrivateRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/migrate-permissions" element={<MigratePermissions />} />
-            <Route path="/user-management" element={<UserManagement />} />
-            <Route path="/novo-processo" element={<NewProcess />} />
-            <Route path="/processo/:id" element={<ProcessView />} />
-            <Route path="/financeiro" element={<Financial />} />
-            <Route path="/financeiro/cliente/:clienteNome" element={<ProcessFinancial />} />
-            <Route path="/ia-facilita" element={<IAFacilita />} />
-            <Route path="/facilisign" element={<FaciliSign />} />
-            <Route path="/google-integration" element={<GoogleIntegration />} />
-            <Route path="/google-integration/callback" element={<GoogleCallback />} />
-            <Route path="/google-calendar-config" element={<GoogleCalendarConfig />} />
-            <Route path="/google-calendar-callback" element={<GoogleCalendarCallback />} />
-            <Route path="/calendar" element={<CalendarManagement />} />
-            <Route path="/whatsapp" element={<WhatsAppManagement />} />
-            <Route path="/processos" element={<ProcessosPrazos />} />
-            <Route path="/audiencias" element={<AudienciasProximas />} />
-            <Route path="/perfil" element={<UserProfile />} />
-          </Route>
+            {/* Rotas Protegidas */}
+            <Route element={<PrivateRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/migrate-permissions" element={<MigratePermissions />} />
+              <Route path="/user-management" element={<UserManagement />} />
+              <Route path="/novo-processo" element={<NewProcess />} />
+              <Route path="/processo/:id" element={<ProcessView />} />
+              <Route path="/financeiro" element={<Financial />} />
+              <Route path="/financeiro/cliente/:clienteNome" element={<ProcessFinancial />} />
+              <Route path="/ia-facilita" element={<IAFacilita />} />
+              <Route path="/facilisign" element={<FaciliSign />} />
+              <Route path="/google-integration" element={<GoogleIntegration />} />
+              <Route path="/google-integration/callback" element={<GoogleCallback />} />
+              <Route path="/google-calendar-config" element={<GoogleCalendarConfig />} />
+              <Route path="/google-calendar-callback" element={<GoogleCalendarCallback />} />
+              <Route path="/calendar" element={<CalendarManagement />} />
+              <Route path="/whatsapp" element={<WhatsAppManagement />} />
+              <Route path="/processos" element={<ProcessosPrazos />} />
+              <Route path="/prazos/dashboard" element={<PrazosDashboard />} />
+              <Route path="/audiencias" element={<AudienciasProximas />} />
+              <Route path="/perfil" element={<UserProfile />} />
+              <Route path="/docs/mtd" element={<MtdDocs />} />
+            </Route>
 
-          {/* Outras Rotas */}
-          <Route path="/_/IdpIFrameHttp/cspreport/fine-allowlist" element={<CSPReportHandler />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+            {/* Outras Rotas */}
+            <Route path="/_/IdpIFrameHttp/cspreport/fine-allowlist" element={<CSPReportHandler />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </LoadingProvider>
   </QueryClientProvider>
 );
 
 const CSPReportHandler = () => {
   useEffect(() => {
     console.log('CSP Report received');
-    return () => {};
+    return () => { };
   }, []);
 
-  return null; 
+  return null;
 };
 
 export default App;

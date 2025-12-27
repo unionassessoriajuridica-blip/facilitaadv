@@ -56,6 +56,7 @@ import { supabase } from "@/integrations/supabase/client.ts";
 import { useNavigate } from "react-router-dom";
 import { ClienteDataButton } from "@/components/ClienteDataButton.tsx";
 import { AlertasCenter } from "@/components/AlertasCenter";
+import { PrazosList } from "@/components/PrazosList";
 import Swal from "sweetalert2";
 import { useToast } from "@/hooks/use-toast";
 declare global {
@@ -108,18 +109,18 @@ const Dashboard = () => {
             .select("id", { count: "exact", head: true })
             .eq("status", "pending")
         ]);
-        
+
         const countDigitais = docDigitaisResult.count || 0;
         const countZapSign = zapSignResult?.count || 0;
-        
+
         console.log("[Dashboard] Pending signatures - documentos_digitais:", countDigitais, "zapsign_documents:", countZapSign, "total:", countDigitais + countZapSign);
-        
+
         setPendingSignaturesCount(countDigitais + countZapSign);
       } catch (err) {
         console.error("Error loading pending signatures count:", err);
       }
     };
-    
+
     loadPendingSignatures();
   }, []);
 
@@ -183,7 +184,7 @@ const Dashboard = () => {
         return;
       }
 
-      const response = await fetch("/api/supabase/functions/tasks-api?status=pending", {
+      const response = await fetch("/api/tasks?status=pending", {
         headers: {
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json",
@@ -198,7 +199,7 @@ const Dashboard = () => {
       const tasks = await response.json();
 
       const processIds = [...new Set(tasks.map((t: any) => t.process_id))];
-      
+
       if (processIds.length > 0) {
         const { data: processos } = await supabase
           .from("processos")
@@ -206,7 +207,7 @@ const Dashboard = () => {
           .in("id", processIds as string[]);
 
         const processosMap = new Map((processos || []).map(p => [p.id, p]));
-        
+
         const tarefasComDados = tasks.map((t: any) => ({
           ...t,
           processos: processosMap.get(t.process_id) || null
@@ -222,7 +223,7 @@ const Dashboard = () => {
       } else {
         setTarefasComProcessos([]);
       }
-      
+
       setShowTarefasModal(true);
     } catch (error) {
       console.error("Erro ao carregar tarefas:", error);
@@ -414,16 +415,16 @@ const Dashboard = () => {
 
           <div className="flex items-center gap-2 md:gap-4">
             <AlertasCenter />
-            
-            <div 
+
+            <div
               className="hidden md:flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate("/perfil")}
               data-testid="button-profile"
             >
               {user?.avatar_url ? (
-                <img 
-                  src={user.avatar_url} 
-                  alt={user.nome || "Avatar"} 
+                <img
+                  src={user.avatar_url}
+                  alt={user.nome || "Avatar"}
                   className="w-8 h-8 rounded-full object-cover"
                 />
               ) : (
@@ -435,23 +436,23 @@ const Dashboard = () => {
                 </span>
                 <span className="text-xs text-gray-400">
                   {user?.funcao === "administrador" ? "Administrador" :
-                   user?.funcao === "assessor_financeiro" ? "Assessor Financeiro" :
-                   user?.funcao === "assessor_juridico" ? "Assessor Juridico" :
-                   "Advogado(a)"}
+                    user?.funcao === "assessor_financeiro" ? "Assessor Financeiro" :
+                      user?.funcao === "assessor_juridico" ? "Assessor Juridico" :
+                        "Advogado(a)"}
                 </span>
               </div>
             </div>
 
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={signOut}
               className="border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-900 hidden sm:flex"
               data-testid="button-sair"
             >
               Sair
             </Button>
-            
+
             {/* Mobile Menu Button */}
             <Button
               variant="ghost"
@@ -500,15 +501,15 @@ const Dashboard = () => {
             </button>
             <div className="border-t border-slate-700 pt-3 mt-3">
               <div className="flex items-center justify-between">
-                <div 
+                <div
                   className="flex items-center gap-2 cursor-pointer"
                   onClick={() => { navigate("/perfil"); setMobileMenuOpen(false); }}
                   data-testid="button-profile-mobile"
                 >
                   {user?.avatar_url ? (
-                    <img 
-                      src={user.avatar_url} 
-                      alt={user.nome || "Avatar"} 
+                    <img
+                      src={user.avatar_url}
+                      alt={user.nome || "Avatar"}
                       className="w-6 h-6 rounded-full object-cover"
                     />
                   ) : (
@@ -518,15 +519,15 @@ const Dashboard = () => {
                     <span className="text-sm text-white">{user?.nome || user?.email?.split("@")[0] || "Usuario"}</span>
                     <span className="text-xs text-gray-400">
                       {user?.funcao === "administrador" ? "Administrador" :
-                       user?.funcao === "assessor_financeiro" ? "Assessor Fin." :
-                       user?.funcao === "assessor_juridico" ? "Assessor Jur." :
-                       "Advogado(a)"}
+                        user?.funcao === "assessor_financeiro" ? "Assessor Fin." :
+                          user?.funcao === "assessor_juridico" ? "Assessor Jur." :
+                            "Advogado(a)"}
                     </span>
                   </div>
                 </div>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => { signOut(); setMobileMenuOpen(false); }}
                   className="border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-900"
                 >
@@ -562,7 +563,7 @@ const Dashboard = () => {
               <span className="text-4xl font-bold">{stats.clientes}</span>
             </div>
           </div>
-          <div 
+          <div
             className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-6 text-white cursor-pointer hover:from-slate-700 hover:to-slate-800 transition-all"
             onClick={loadTarefasComProcessos}
             data-testid="kpi-tarefas"
@@ -590,7 +591,7 @@ const Dashboard = () => {
               </div>
             </div>
           )}
-          
+
           {hasPermission("financeiro") && (
             <div
               className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-4 text-white cursor-pointer hover:from-slate-700 hover:to-slate-800 transition-all"
@@ -700,6 +701,11 @@ const Dashboard = () => {
           )}
         </div>
 
+        {/* Prazos Processuais */}
+        <div className="mb-6">
+          <PrazosList />
+        </div>
+
         {/* Processes Section */}
         <Card className="bg-white dark:bg-slate-800 shadow-sm">
           <CardHeader className="pb-2">
@@ -748,119 +754,116 @@ const Dashboard = () => {
             ) : (
               <>
                 <div className="overflow-x-auto -mx-4 sm:mx-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="whitespace-nowrap">AÇÕES</TableHead>
-                      <TableHead className="whitespace-nowrap">Nº PROCESSO</TableHead>
-                      <TableHead className="whitespace-nowrap">CLIENTE</TableHead>
-                      <TableHead className="whitespace-nowrap hidden sm:table-cell">TIPO DO PROCESSO</TableHead>
-                      <TableHead className="whitespace-nowrap hidden md:table-cell">CLIENTE PRESO</TableHead>
-                      <TableHead className="whitespace-nowrap">PRAZO</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentProcessos.map((processo) => (
-                      <TableRow
-                        key={processo.id}
-                        className={getRowClassName(processo.prazo)}
-                      >
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleEditProcesso(processo.id, processo.user_id)}
-                              data-testid={`button-edit-${processo.id}`}
-                            >
-                              <Edit className="w-4 h-4 text-success" />
-                            </Button>
-                            {hasPermission("excluir_processo") && (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap">AÇÕES</TableHead>
+                        <TableHead className="whitespace-nowrap">Nº PROCESSO</TableHead>
+                        <TableHead className="whitespace-nowrap">CLIENTE</TableHead>
+                        <TableHead className="whitespace-nowrap hidden sm:table-cell">TIPO DO PROCESSO</TableHead>
+                        <TableHead className="whitespace-nowrap hidden md:table-cell">CLIENTE PRESO</TableHead>
+                        <TableHead className="whitespace-nowrap">PRAZO</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {currentProcessos.map((processo) => (
+                        <TableRow
+                          key={processo.id}
+                          className={getRowClassName(processo.prazo)}
+                        >
+                          <TableCell>
+                            <div className="flex gap-2">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() =>
-                                  handleDeleteProcesso(processo.id, processo.user_id)
-                                }
-                                data-testid={`button-delete-${processo.id}`}
+                                onClick={() => handleEditProcesso(processo.id, processo.user_id)}
+                                data-testid={`button-edit-${processo.id}`}
                               >
-                                <Trash2 className="w-4 h-4 text-destructive" />
+                                <Edit className="w-4 h-4 text-success" />
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          {processo.numero_processo}
-                        </TableCell>
-                        <TableCell>
-                          {processo.clientes?.nome || "Cliente não encontrado"}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge
-                            variant="outline"
-                            className="bg-primary/10 text-primary border-primary/20"
-                          >
-                            {processo.tipo_processo}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          <Badge
-                            variant="outline"
-                            className={
-                              processo.cliente_preso
-                                ? "bg-destructive/10 text-destructive border-destructive/20"
-                                : "bg-success/10 text-success border-success/20"
-                            }
-                          >
-                            {processo.cliente_preso ? "SIM" : "NÃO"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {processo.prazo ? (
-                            <div className="flex flex-col">
-                              <Badge
-                                className={`
+                              {hasPermission("excluir_processo") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleDeleteProcesso(processo.id, processo.user_id)
+                                  }
+                                  data-testid={`button-delete-${processo.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-mono">
+                            {processo.numero_processo}
+                          </TableCell>
+                          <TableCell>
+                            {processo.clientes?.nome || "Cliente não encontrado"}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge
+                              variant="outline"
+                              className="bg-primary/10 text-primary border-primary/20"
+                            >
+                              {processo.tipo_processo}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <Badge
+                              variant="outline"
+                              className={
+                                processo.cliente_preso
+                                  ? "bg-destructive/10 text-destructive border-destructive/20"
+                                  : "bg-success/10 text-success border-success/20"
+                              }
+                            >
+                              {processo.cliente_preso ? "SIM" : "NÃO"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {processo.prazo ? (
+                              <div className="flex flex-col">
+                                <Badge
+                                  className={`
                                   w-fit mb-1 
-                                  ${
-                                    getPrazoColor(processo.prazo) ===
-                                    "destructive"
+                                  ${getPrazoColor(processo.prazo) ===
+                                      "destructive"
                                       ? "bg-destructive text-destructive-foreground"
                                       : ""
-                                  }
-                                  ${
-                                    getPrazoColor(processo.prazo) === "warning"
+                                    }
+                                  ${getPrazoColor(processo.prazo) === "warning"
                                       ? "bg-amber-500 text-amber-50"
                                       : ""
-                                  }
-                                  ${
-                                    getPrazoColor(processo.prazo) === "success"
+                                    }
+                                  ${getPrazoColor(processo.prazo) === "success"
                                       ? "bg-green-500 text-green-50"
                                       : ""
-                                  }
+                                    }
                                 `}
-                              >
-                                {getPrazoColor(processo.prazo) ===
-                                  "destructive" && "Vencido"}
-                                {getPrazoColor(processo.prazo) === "warning" &&
-                                  "Próximo"}
-                                {getPrazoColor(processo.prazo) === "success" &&
-                                  "Em dia"}
-                              </Badge>
-                              <div className="text-sm">
-                                {formatDate(processo.prazo)}
+                                >
+                                  {getPrazoColor(processo.prazo) ===
+                                    "destructive" && "Vencido"}
+                                  {getPrazoColor(processo.prazo) === "warning" &&
+                                    "Próximo"}
+                                  {getPrazoColor(processo.prazo) === "success" &&
+                                    "Em dia"}
+                                </Badge>
+                                <div className="text-sm">
+                                  {formatDate(processo.prazo)}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {getPrazoText(processo.prazo)}
+                                </div>
                               </div>
-                              <div className="text-xs text-muted-foreground">
-                                {getPrazoText(processo.prazo)}
-                              </div>
-                            </div>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
                 {/* Controles de paginação */}
                 <div className="flex justify-between items-center mt-4 gap-2">
@@ -899,7 +902,7 @@ const Dashboard = () => {
               Tarefas Pendentes ({tarefasComProcessos.length})
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="mt-4">
             {tarefasComProcessos.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
@@ -919,7 +922,7 @@ const Dashboard = () => {
                 </TableHeader>
                 <TableBody>
                   {tarefasComProcessos.map((tarefa) => (
-                    <TableRow 
+                    <TableRow
                       key={tarefa.id}
                       className="cursor-pointer hover:bg-muted/50"
                       onClick={() => {
@@ -949,17 +952,17 @@ const Dashboard = () => {
                         {tarefa.processos?.clientes?.nome || "-"}
                       </TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           variant={
-                            tarefa.priority === "alta" ? "destructive" : 
-                            tarefa.priority === "media" ? "outline" : 
-                            "secondary"
+                            tarefa.priority === "alta" ? "destructive" :
+                              tarefa.priority === "media" ? "outline" :
+                                "secondary"
                           }
                           className={tarefa.priority === "media" ? "border-amber-500 text-amber-600" : ""}
                         >
-                          {tarefa.priority === "alta" ? "Alta" : 
-                           tarefa.priority === "media" ? "Media" : 
-                           "Baixa"}
+                          {tarefa.priority === "alta" ? "Alta" :
+                            tarefa.priority === "media" ? "Media" :
+                              "Baixa"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -974,9 +977,9 @@ const Dashboard = () => {
                       </TableCell>
                       <TableCell>
                         <Badge variant={tarefa.status === "pendente" ? "outline" : "default"}>
-                          {tarefa.status === "pendente" ? "Pendente" : 
-                           tarefa.status === "em_andamento" ? "Em Andamento" : 
-                           tarefa.status}
+                          {tarefa.status === "pendente" ? "Pendente" :
+                            tarefa.status === "em_andamento" ? "Em Andamento" :
+                              tarefa.status}
                         </Badge>
                       </TableCell>
                     </TableRow>

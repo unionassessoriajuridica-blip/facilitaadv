@@ -29,61 +29,35 @@ export function useDashboardStats() {
   return useQuery<DashboardStats>({
     queryKey: ["dashboard-stats", user?.id, canViewAllProcesses, canViewAllClients],
     queryFn: async () => {
-      const hoje = new Date().toISOString().split("T")[0];
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Not authenticated");
 
-      let processosCountQuery = supabase
-        .from("processos")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "ATIVO");
+      const headers = {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      };
 
-      let clientesQuery = supabase
-        .from("clientes")
-        .select("id", { count: "exact", head: true });
-
-      let audienciasQuery = supabase
-        .from("processos")
-        .select("id", { count: "exact", head: true })
-        .eq("prazo", hoje);
-
-      if (!canViewAllProcesses && user?.id) {
-        processosCountQuery = processosCountQuery.eq("user_id", user.id);
-        audienciasQuery = audienciasQuery.eq("user_id", user.id);
-      }
-      if (!canViewAllClients && user?.id) {
-        clientesQuery = clientesQuery.eq("user_id", user.id);
-      }
-
-      const [processosResult, clientesResult, audienciasResult] = await Promise.all([
-        processosCountQuery,
-        clientesQuery,
-        audienciasQuery,
+      // Fetch stats from server API routes (using SERVICE_ROLE_KEY to bypass RLS)
+      const [processosRes, clientesRes, audienciasRes, tarefasRes] = await Promise.all([
+        fetch("/api/stats/processos", { headers }),
+        fetch("/api/stats/clientes", { headers }),
+        fetch("/api/stats/audiencias", { headers }),
+        fetch("/api/tasks?status=pending", { headers })
       ]);
 
-      let tarefasPendentes = 0;
-      try {
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token;
-        if (accessToken) {
-          const response = await fetch("/api/supabase/functions/tasks-api?status=pending", {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
-            },
-          });
-          if (response.ok) {
-            const tasks = await response.json();
-            tarefasPendentes = Array.isArray(tasks) ? tasks.length : 0;
-          }
-        }
-      } catch (e) {
-        console.error("Erro ao contar tarefas:", e);
-      }
+      const [processosData, clientesData, audienciasData, tarefasData] = await Promise.all([
+        processosRes.json(),
+        clientesRes.json(),
+        audienciasRes.json(),
+        tarefasRes.json()
+      ]);
 
       return {
-        processosAtivos: processosResult.count || 0,
-        clientes: clientesResult.count || 0,
-        audienciasHoje: audienciasResult.count || 0,
-        tarefasPendentes,
+        processosAtivos: processosData.count || 0,
+        audienciasHoje: audienciasData.count || 0,
+        clientes: clientesData.count || 0,
+        tarefasPendentes: Array.isArray(tarefasData) ? tarefasData.length : 0,
       };
     },
     enabled: !!user && !permissionsLoading,
@@ -99,18 +73,20 @@ export function useDashboardProcessos() {
   return useQuery<Processo[]>({
     queryKey: ["dashboard-processos", user?.id, canViewAllProcesses],
     queryFn: async () => {
-      let query = supabase
-        .from("processos")
-        .select(`id, numero_processo, tipo_processo, status, created_at, prazo, user_id, cliente_preso, clientes (nome)`)
-        .order("created_at", { ascending: false });
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      if (!accessToken) throw new Error("Not authenticated");
 
-      if (!canViewAllProcesses && user?.id) {
-        query = query.eq("user_id", user.id);
-      }
+      // Use server API route that bypasses RLS
+      const response = await fetch("/api/processos", {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+      if (!response.ok) throw new Error("Failed to fetch processos");
+      return await response.json();
     },
     enabled: !!user && !permissionsLoading,
     staleTime: 1000 * 60 * 2,

@@ -28,6 +28,10 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_GOOGLE_CLIENT_SECRET": JSON.stringify(
         env.VITE_GOOGLE_CLIENT_SECRET
       ),
+      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(env.VITE_SUPABASE_URL),
+      "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(
+        env.VITE_SUPABASE_ANON_KEY
+      ),
       "import.meta.env.MODE": JSON.stringify(mode),
     },
     envPrefix: "VITE_",

@@ -28,10 +28,10 @@ async function callEdgeFunction(
   body?: Record<string, any>
 ): Promise<any> {
   const token = await getAuthToken();
-  
+
   // Usa proxy local para evitar problemas de CORS
-  let url = `/api/supabase/functions/tasks-api`;
-  
+  let url = `/api/tasks`;
+
   if (params && Object.keys(params).length > 0) {
     const queryString = new URLSearchParams(params).toString();
     url += `?${queryString}`;

@@ -1,0 +1,129 @@
+{
+    "movimentos_com_prazo": {
+        "246": {
+            "descricao": "Intimação",
+            "tipo_prazo": "INTIMACAO",
+            "dias_padrao": 5,
+            "dias_corridos": false,
+            "alerta_dias": [
+                7,
+                5,
+                3
+            ],
+            "observacao": "Prazo para ciência de intimação. Verificar especificidades no despacho."
+        },
+        "193": {
+            "descricao": "Citação",
+            "tipo_prazo": "RESPOSTA",
+            "dias_padrao": 15,
+            "dias_corridos": false,
+            "alerta_dias": [
+                7,
+                5,
+                3
+            ],
+            "observacao": "Prazo para apresentação de contestação. CPC art. 335."
+        },
+        "123": {
+            "descricao": "Juntada de decisão",
+            "tipo_prazo": "RECURSO",
+            "dias_padrao": 15,
+            "dias_corridos": false,
+            "alerta_dias": [
+                7,
+                5,
+                3
+            ],
+            "observacao": "Prazo para interposição de recurso. Verificar tipo de decisão."
+        },
+        "51": {
+            "descricao": "Publicação",
+            "tipo_prazo": "CIENCIA",
+            "dias_padrao": 5,
+            "dias_corridos": false,
+            "alerta_dias": [
+                5,
+                3
+            ],
+            "observacao": "Prazo para ciência de publicação de ato processual."
+        },
+        "22": {
+            "descricao": "Vista dos autos",
+            "tipo_prazo": "MANIFESTACAO",
+            "dias_padrao": 5,
+            "dias_corridos": false,
+            "alerta_dias": [
+                5,
+                3
+            ],
+            "observacao": "Prazo para manifestação após vista dos autos."
+        },
+        "11012": {
+            "descricao": "Apresentação de contrarrazões",
+            "tipo_prazo": "CONTRARRAZOES",
+            "dias_padrao": 15,
+            "dias_corridos": false,
+            "alerta_dias": [
+                7,
+                5,
+                3
+            ],
+            "observacao": "Prazo para apresentar contrarrazões ao recurso. CPC art. 1.030."
+        },
+        "238": {
+            "descricao": "Impugnação ao cumprimento de sentença",
+            "tipo_prazo": "IMPUGNACAO",
+            "dias_padrao": 15,
+            "dias_corridos": false,
+            "alerta_dias": [
+                7,
+                5,
+                3
+            ],
+            "observacao": "Prazo para impugnar cumprimento de sentença. CPC art. 525."
+        },
+        "132": {
+            "descricao": "Juntada de mandado cumprido",
+            "tipo_prazo": "VERIFICACAO",
+            "dias_padrao": 5,
+            "dias_corridos": false,
+            "alerta_dias": [
+                5,
+                3
+            ],
+            "observacao": "Prazo para verificação de mandado cumprido e eventuais providências."
+        },
+        "60": {
+            "descricao": "Recebimento dos autos",
+            "tipo_prazo": "DESPACHO",
+            "dias_padrao": 5,
+            "dias_corridos": false,
+            "alerta_dias": [
+                5,
+                3
+            ],
+            "observacao": "Prazo para análise após recebimento dos autos."
+        },
+        "11": {
+            "descricao": "Distribuição por dependência",
+            "tipo_prazo": "CIENCIA",
+            "dias_padrao": 5,
+            "dias_corridos": false,
+            "alerta_dias": [
+                5,
+                3
+            ],
+            "observacao": "Prazo para ciência de distribuição por dependência."
+        }
+    },
+    "metadata": {
+        "ultima_atualizacao": "2025-12-26",
+        "fonte": "Tabela Processual Unificada (TPU) do CNJ",
+        "observacoes": [
+            "Prazos são calculados em dias ÚTEIS, exceto se indicado dias_corridos=true",
+            "Alertas são enviados N dias ANTES do vencimento",
+            "Sempre conferir na consulta oficial do tribunal antes de agir"
+        ],
+        "disclaimer": "⚠️ IMPORTANTE: Os prazos calculados são indicativos e baseados em dados públicos do DataJud/CNJ. SEMPRE confira na consulta processual oficial do tribunal antes de tomar qualquer ação. Este sistema não substitui o acompanhamento processual oficial."
+    }
+}

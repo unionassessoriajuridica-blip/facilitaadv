@@ -16,21 +16,17 @@ export interface FinanceiroItem {
 
 export function useFinanceiroData() {
   const { user } = useAuth();
-  const { canViewAllFinancial, permissionsLoading } = useGlobalAccess();
+  const { permissionsLoading } = useGlobalAccess();
 
   const { data: financeiro = [], isLoading, refetch } = useQuery<FinanceiroItem[]>({
-    queryKey: ["financeiro", user?.id, canViewAllFinancial],
+    queryKey: ["financeiro", user?.id],
     queryFn: async () => {
-      let query = supabase
+      // Removendo filtro de user_id conforme solicitado para visibilidade global
+      const { data, error } = await supabase
         .from("financeiro")
         .select("*")
         .order("vencimento", { ascending: true });
 
-      if (!canViewAllFinancial && user?.id) {
-        query = query.eq("user_id", user.id);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return data || [];
     },
@@ -44,23 +40,36 @@ export function useFinanceiroData() {
 
 export function useClientesData() {
   const { user } = useAuth();
-  const { canViewAllClients, permissionsLoading } = useGlobalAccess();
+  const { permissionsLoading } = useGlobalAccess();
 
   const { data: clientes = [], isLoading } = useQuery<{ nome: string }[]>({
-    queryKey: ["clientes-names", user?.id, canViewAllClients],
+    queryKey: ["clientes-names-global", user?.id],
     queryFn: async () => {
-      let query = supabase
+      // 1. Busca nomes na tabela de clientes
+      const { data: clientesData, error: errorClientes } = await supabase
         .from("clientes")
-        .select("nome")
-        .order("nome");
+        .select("nome");
 
-      if (!canViewAllClients && user?.id) {
-        query = query.eq("user_id", user.id);
-      }
+      if (errorClientes) throw errorClientes;
 
-      const { data, error } = await query;
-      if (error) throw error;
-      return data || [];
+      // 2. Busca nomes na tabela de responsáveis financeiros
+      const { data: responsaveisData, error: errorResponsaveis } = await supabase
+        .from("responsavel_financeiro")
+        .select("nome");
+
+      if (errorResponsaveis) throw errorResponsaveis;
+
+      // Unifica as listas e remove duplicatas
+      const todosNomes = new Set([
+        ...(clientesData?.map(c => c.nome) || []),
+        ...(responsaveisData?.map(r => r.nome) || [])
+      ]);
+
+      const listaOrdenada = Array.from(todosNomes)
+        .sort((a, b) => a.localeCompare(b))
+        .map(nome => ({ nome }));
+
+      return listaOrdenada;
     },
     enabled: !!user && !permissionsLoading,
     staleTime: 1000 * 60 * 5,

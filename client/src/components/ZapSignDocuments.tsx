@@ -94,7 +94,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
   const [zapsignDocs, setZapsignDocs] = useState<ZapSignDocRecord[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [selectedViewToken, setSelectedViewToken] = useState<string | null>(null);
-  
+
   const [additionalSigners, setAdditionalSigners] = useState<AdditionalSigner[]>([]);
   const [witnesses, setWitnesses] = useState<Witness[]>([]);
 
@@ -197,10 +197,10 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
     try {
       const result = await createDocMutation.mutateAsync({
         processoId,
-        clienteNome: cliente.nome,
-        clienteEmail: cliente.email,
-        clienteTelefone: cliente.telefone,
-        clienteCpfCnpj: cliente.cpf_cnpj,
+        clienteNome: cliente?.nome || "N/A",
+        clienteEmail: cliente?.email,
+        clienteTelefone: cliente?.telefone,
+        clienteCpfCnpj: cliente?.cpf_cnpj,
         documentName: `${documentName} - ${numeroProcesso}`,
         pdfUrl,
         sendEmail,
@@ -286,7 +286,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
               <DialogHeader>
                 <DialogTitle>Enviar Documento para Assinatura</DialogTitle>
                 <DialogDescription>
-                  Envie um documento para o cliente {cliente.nome} assinar digitalmente via ZapSign.
+                  Envie um documento para o cliente {cliente?.nome || "N/A"} assinar digitalmente via ZapSign.
                 </DialogDescription>
               </DialogHeader>
 
@@ -352,13 +352,13 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                     <div className="space-y-0.5">
                       <Label>Enviar por E-mail</Label>
                       <p className="text-xs text-muted-foreground">
-                        {cliente.email || "Cliente sem e-mail cadastrado"}
+                        {cliente?.email || "Cliente sem e-mail cadastrado"}
                       </p>
                     </div>
                     <Switch
                       checked={sendEmail}
                       onCheckedChange={setSendEmail}
-                      disabled={!cliente.email}
+                      disabled={!cliente?.email}
                       data-testid="switch-send-email"
                     />
                   </div>
@@ -367,13 +367,13 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                     <div className="space-y-0.5">
                       <Label>Enviar por WhatsApp</Label>
                       <p className="text-xs text-muted-foreground">
-                        {cliente.telefone || "Cliente sem telefone cadastrado"} (R$ 0,50/envio)
+                        {cliente?.telefone || "Cliente sem telefone cadastrado"} (R$ 0,50/envio)
                       </p>
                     </div>
                     <Switch
                       checked={sendWhatsapp}
                       onCheckedChange={setSendWhatsapp}
-                      disabled={!cliente.telefone}
+                      disabled={!cliente?.telefone}
                       data-testid="switch-send-whatsapp"
                     />
                   </div>
@@ -388,10 +388,10 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                       </p>
                     </div>
                     <div className="text-sm text-muted-foreground space-y-1">
-                      <p>Nome: {cliente.nome}</p>
-                      <p>E-mail: {cliente.email || "-"}</p>
-                      <p>Telefone: {cliente.telefone || "-"}</p>
-                      <p>CPF/CNPJ: {cliente.cpf_cnpj || "-"}</p>
+                      <p>Nome: {cliente?.nome || "-"}</p>
+                      <p>E-mail: {cliente?.email || "-"}</p>
+                      <p>Telefone: {cliente?.telefone || "-"}</p>
+                      <p>CPF/CNPJ: {cliente?.cpf_cnpj || "-"}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -414,7 +414,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                       Adicionar
                     </Button>
                   </div>
-                  
+
                   {additionalSigners.length > 0 && (
                     <div className="space-y-3">
                       {additionalSigners.map((signer, index) => (
@@ -489,7 +489,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                       Adicionar
                     </Button>
                   </div>
-                  
+
                   {witnesses.length > 0 && (
                     <div className="space-y-3">
                       {witnesses.map((witness, index) => (

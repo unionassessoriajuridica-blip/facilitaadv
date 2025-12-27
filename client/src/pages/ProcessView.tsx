@@ -52,7 +52,7 @@ const ProcessView = () => {
   const [documentos, setDocumentos] = useState<any[]>([]);
   const [responsavel, setResponsavel] = useState<any>(null);
   const [atualizandoDatajud, setAtualizandoDatajud] = useState(false);
- 
+
   const {
     canViewAllProcesses: hasGlobalProcessAccess,
     permissionsLoading: globalAccessLoading,
@@ -74,19 +74,17 @@ const ProcessView = () => {
 
       if (!id) return;
 
+      // Fetch processo - sem filtro de user_id para permitir acesso global
       let processoQuery = supabase
         .from("processos")
         .select(`*, clientes (*)`)
         .eq("id", id);
 
-      if (!hasGlobalProcessAccess && user?.id) {
-        processoQuery = processoQuery.eq("user_id", user.id);
-      }
-
       const { data: processoData, error: processoError } =
         await processoQuery.single();
 
       if (processoError) {
+        console.error("[ProcessView] Error loading processo:", processoError);
         toast({
           variant: "destructive",
           title: "Erro",
@@ -97,36 +95,51 @@ const ProcessView = () => {
         return;
       }
 
+      console.log("[ProcessView] Processo loaded:", processoData);
       setProcesso(processoData);
-      setCliente(processoData.clientes);
 
-      // Executar queries em paralelo para melhor performance
-      const clienteNome = processoData.clientes?.nome || "";
-      const [financeiroResult, observacoesResult, documentosResult, responsavelResult] = await Promise.all([
-        supabase
-          .from("financeiro")
-          .select("*")
-          .eq("cliente_nome", clienteNome)
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("observacoes_processo")
-          .select("*")
-          .eq("processo_id", id!),
-        supabase
-          .from("documentos_processo")
-          .select("*")
-          .eq("processo_id", id!),
-        supabase
-          .from("responsavel_financeiro")
-          .select("*")
-          .eq("processo_id", id!)
-          .maybeSingle()
+      // Buscar cliente via API (usa SERVICE_ROLE_KEY para ignorar RLS)
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const headers = {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      };
+
+      // Buscar dados relacionados em paralelo usando as novas rotas de API
+      let clienteData = null;
+
+      // Tentar buscar cliente por cliente_id primeiro
+      if (processoData.cliente_id) {
+        const clienteRes = await fetch(`/api/clientes/${processoData.cliente_id}`, { headers });
+        clienteData = clienteRes.ok ? await clienteRes.json() : null;
+      }
+
+      // Fallback: Se não conseguiu buscar por ID, usar dados do join (para processos antigos)
+      if (!clienteData && processoData.clientes) {
+        console.log("[ProcessView] Using cliente data from join (processo antigo)");
+        clienteData = processoData.clientes;
+      }
+
+      const [financeiroRes, observacoesRes, documentosRes, responsavelRes] = await Promise.all([
+        fetch(`/api/processos/${id}/financeiro`, { headers }),
+        fetch(`/api/processos/${id}/observacoes`, { headers }),
+        fetch(`/api/processos/${id}/documentos`, { headers }),
+        fetch(`/api/processos/${id}/responsavel`, { headers })
       ]);
 
-      if (!financeiroResult.error) setFinanceiro(financeiroResult.data || []);
-      if (!observacoesResult.error) setObservacoes(observacoesResult.data || []);
-      if (!documentosResult.error) setDocumentos(documentosResult.data || []);
-      if (!responsavelResult.error) setResponsavel(responsavelResult.data);
+      const [financeiroData, observacoesData, documentosData, responsavelData] = await Promise.all([
+        financeiroRes.ok ? financeiroRes.json() : [],
+        observacoesRes.ok ? observacoesRes.json() : [],
+        documentosRes.ok ? documentosRes.json() : [],
+        responsavelRes.ok ? responsavelRes.json() : null
+      ]);
+
+      setCliente(clienteData);
+      setFinanceiro(financeiroData);
+      setObservacoes(observacoesData);
+      setDocumentos(documentosData);
+      setResponsavel(responsavelData);
 
     } catch (error) {
       console.error("Erro ao carregar dados do processo:", error);
@@ -171,13 +184,13 @@ const ProcessView = () => {
         prevFinanceiro.map((item) =>
           item.id === financeiroId
             ? {
-                ...item,
-                status: novoStatus,
-                data_pagamento:
-                  novoStatus === "PAGO"
-                    ? new Date().toISOString().split("T")[0]
-                    : null,
-              }
+              ...item,
+              status: novoStatus,
+              data_pagamento:
+                novoStatus === "PAGO"
+                  ? new Date().toISOString().split("T")[0]
+                  : null,
+            }
             : item
         )
       );
@@ -260,8 +273,8 @@ const ProcessView = () => {
   const getMovimentos = (): DatajudMovimento[] => {
     if (!processo?.datajud_movimentos) return [];
     return datajudService.parseMovimentos(
-      typeof processo.datajud_movimentos === 'string' 
-        ? processo.datajud_movimentos 
+      typeof processo.datajud_movimentos === 'string'
+        ? processo.datajud_movimentos
         : JSON.stringify(processo.datajud_movimentos)
     );
   };
@@ -287,7 +300,7 @@ const ProcessView = () => {
     );
   }
 
-  if (!processo || !cliente) {
+  if (!processo) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -314,7 +327,7 @@ const ProcessView = () => {
             </Button>
             <div>
               <h1 className="text-lg sm:text-2xl font-bold">Dados do Cliente</h1>
-              <p className="text-muted-foreground text-sm sm:text-base truncate max-w-[200px] sm:max-w-none">{cliente.nome}</p>
+              <p className="text-muted-foreground text-sm sm:text-base truncate max-w-[200px] sm:max-w-none">{cliente?.nome || "Cliente não disponível"}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -363,66 +376,66 @@ const ProcessView = () => {
           <CardContent className="p-3 sm:p-6">
             <Tabs defaultValue="dados-pessoais" className="w-full">
               <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-              <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-1">
-                <TabsTrigger
-                  value="dados-pessoais"
-                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
-                >
-                  <User className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Dados Pessoais</span>
-                  <span className="sm:hidden">Dados</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="financeiro"
-                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
-                >
-                  <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Financeiro ({financeiro.length})</span>
-                  <span className="sm:hidden">Fin.</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="responsavel"
-                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
-                >
-                  <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Responsável</span>
-                  <span className="sm:hidden">Resp.</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="tarefas"
-                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
-                  data-testid="tab-tarefas"
-                >
-                  <CheckSquare className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Tarefas
-                </TabsTrigger>
-                <TabsTrigger
-                  value="arquivos"
-                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
-                >
-                  <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Arquivos ({documentos.length})</span>
-                  <span className="sm:hidden">Arq.</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="assinatura"
-                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
-                  data-testid="tab-assinatura"
-                >
-                  <FileSignature className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Assinatura</span>
-                  <span className="sm:hidden">Assinar</span>
-                </TabsTrigger>
-                <TabsTrigger
-                  value="info-processo"
-                  className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
-                  data-testid="tab-info-processo"
-                >
-                  <Gavel className="w-3 h-3 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Info. Processo</span>
-                  <span className="sm:hidden">Info</span>
-                </TabsTrigger>
-              </TabsList>
+                <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-1">
+                  <TabsTrigger
+                    value="dados-pessoais"
+                    className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    <User className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Dados Pessoais</span>
+                    <span className="sm:hidden">Dados</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="financeiro"
+                    className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Financeiro ({financeiro.length})</span>
+                    <span className="sm:hidden">Fin.</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="responsavel"
+                    className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    <Users className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Responsável</span>
+                    <span className="sm:hidden">Resp.</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="tarefas"
+                    className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                    data-testid="tab-tarefas"
+                  >
+                    <CheckSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+                    Tarefas
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="arquivos"
+                    className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                  >
+                    <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Arquivos ({documentos.length})</span>
+                    <span className="sm:hidden">Arq.</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="assinatura"
+                    className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                    data-testid="tab-assinatura"
+                  >
+                    <FileSignature className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Assinatura</span>
+                    <span className="sm:hidden">Assinar</span>
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="info-processo"
+                    className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                    data-testid="tab-info-processo"
+                  >
+                    <Gavel className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <span className="hidden sm:inline">Info. Processo</span>
+                    <span className="sm:hidden">Info</span>
+                  </TabsTrigger>
+                </TabsList>
               </div>
 
               <TabsContent value="dados-pessoais" className="mt-6">
@@ -436,31 +449,31 @@ const ProcessView = () => {
                         <label className="text-sm font-medium text-muted-foreground">
                           Nome Completo
                         </label>
-                        <p className="text-base font-medium">{cliente.nome}</p>
+                        <p className="text-base font-medium">{cliente?.nome || "-"}</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">
                           CPF
                         </label>
-                        <p className="text-base">{cliente.cpf_cnpj || "-"}</p>
+                        <p className="text-base">{cliente?.cpf_cnpj || "-"}</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">
                           Telefone
                         </label>
-                        <p className="text-base">{cliente.telefone || "-"}</p>
+                        <p className="text-base">{cliente?.telefone || "-"}</p>
                       </div>
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">
                           E-mail
                         </label>
-                        <p className="text-base">{cliente.email || "-"}</p>
+                        <p className="text-base">{cliente?.email || "-"}</p>
                       </div>
                       <div className="md:col-span-2">
                         <label className="text-sm font-medium text-muted-foreground">
                           Endereço
                         </label>
-                        <p className="text-base">{cliente.endereco || "-"}</p>
+                        <p className="text-base">{cliente?.endereco || "-"}</p>
                       </div>
                     </div>
                   </div>
@@ -744,6 +757,7 @@ const ProcessView = () => {
               <TabsContent value="arquivos" className="mt-6">
                 <ProcessoArquivos
                   processoId={id!}
+                  clienteNome={cliente?.nome || ""}
                   numeroProcesso={processo.numero_processo}
                   documentos={documentos}
                   onDocumentosChange={loadProcessData}

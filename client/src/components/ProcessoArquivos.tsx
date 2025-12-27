@@ -47,6 +47,7 @@ interface Documento {
 
 interface ProcessoArquivosProps {
   processoId: string;
+  clienteNome: string;
   numeroProcesso: string;
   documentos: Documento[];
   onDocumentosChange?: () => void;
@@ -54,6 +55,7 @@ interface ProcessoArquivosProps {
 
 export function ProcessoArquivos({
   processoId,
+  clienteNome,
   numeroProcesso,
   documentos,
   onDocumentosChange,
@@ -156,6 +158,8 @@ export function ProcessoArquivos({
       setUploadProgress(90);
 
       const insertData: Record<string, any> = {
+        user_id: user.id,
+        cliente_nome: clienteNome,
         processo_id: processoId,
         nome_arquivo: selectedFile.name,
         tipo_arquivo: selectedFile.type,
@@ -218,7 +222,7 @@ export function ProcessoArquivos({
           google_drive_folder_id: result.folderId,
           google_drive_link: result.webViewLink,
         };
-        
+
         await supabase
           .from("documentos_processo")
           .update(updateData)

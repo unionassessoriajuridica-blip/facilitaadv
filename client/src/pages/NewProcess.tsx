@@ -1,4 +1,3 @@
-import * as React from "react";
 import React, { useState, useEffect } from "react";
 import Swal from "sweetalert2";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -42,6 +41,7 @@ import {
   formatRG,
   formatPhone,
   formatCEP,
+  formatProcessNumber,
   removeMask,
 } from "@/utils/masks.ts";
 import { useGlobalAccess } from "@/utils/accessUtils.ts";
@@ -81,6 +81,7 @@ const NewProcess = () => {
     tipoProcesso: "",
     temPrazo: false,
     prazo: "",
+    clientePreso: false,
   });
 
   const [financeiroData, setFinanceiroData] = useState({
@@ -151,6 +152,10 @@ const NewProcess = () => {
 
   const handleResponsavelCepChange = (value: string) => {
     setResponsavelData({ ...responsavelData, cep: formatCEP(value) });
+  };
+
+  const handleNumeroProcessoChange = (value: string) => {
+    setProcessoData({ ...processoData, numeroProcesso: formatProcessNumber(value) });
   };
 
   // Verificar se está em modo de edição e carregar dados existentes
@@ -225,10 +230,41 @@ const NewProcess = () => {
         return;
       }
 
+      // Buscar cliente via rota API (usa SERVICE_ROLE_KEY para ignorar RLS)
+      let clienteFromApi = null;
+      if (processo.cliente_id) {
+        try {
+          const { data: sessionData } = await supabase.auth.getSession();
+          const accessToken = sessionData?.session?.access_token;
+
+          const clienteRes = await fetch(`/api/clientes/${processo.cliente_id}`, {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+          if (clienteRes.ok) {
+            clienteFromApi = await clienteRes.json();
+            console.log("[NewProcess] Cliente from API:", clienteFromApi);
+          } else {
+            console.error("[NewProcess] Erro ao buscar cliente via API - Status:", clienteRes.status);
+          }
+        } catch (error) {
+          console.error("[NewProcess] Erro ao buscar cliente via API:", error);
+        }
+      } else {
+        console.warn("[NewProcess] Processo sem cliente_id:", processo);
+      }
+
+      // Fallback: usar dados do join se API falhar (para processos antigos)
+      const cliente = clienteFromApi || processo.clientes;
+      console.log("[NewProcess] Cliente final (API ou join):", cliente);
+
       // Preencher dados do cliente
-      if (processo.clientes) {
-        const cliente = processo.clientes;
+      if (cliente) {
         const enderecoParts = cliente.endereco?.split(", ") || ["", "", "", ""];
+        console.log("[NewProcess] Endereço parts:", enderecoParts);
 
         setClienteData({
           nomeCompleto: cliente.nome || "",
@@ -242,6 +278,15 @@ const NewProcess = () => {
           cidade: enderecoParts[2]?.split(" - ")[0] || "",
           cep: enderecoParts[2]?.split(" - ")[1] || "",
         });
+        console.log("[NewProcess] ClienteData setado:", {
+          nome: cliente.nome,
+          cpf: cliente.cpf_cnpj,
+          telefone: cliente.telefone,
+          email: cliente.email,
+          endereco: cliente.endereco
+        });
+      } else {
+        console.warn("[NewProcess] Nenhum dado de cliente encontrado para este processo");
       }
 
       // Preencher dados do processo
@@ -250,60 +295,69 @@ const NewProcess = () => {
         tipoProcesso: processo.tipo_processo || "",
         temPrazo: !!processo.prazo,
         prazo: processo.prazo || "",
+        clientePreso: !!processo.cliente_preso,
       });
 
-      // Carregar dados financeiros
-      let financeiroQuery = supabase
-        .from("financeiro")
-        .select("*")
-        .eq("cliente_nome", processo.clientes?.nome)
-        .order("created_at", { ascending: true });
+      // Carregar dados financeiros - usar nome do cliente carregado (pode ser da API ou join)
+      if (cliente?.nome) {
+        console.log("[NewProcess] Buscando dados financeiros para cliente:", cliente.nome);
 
-      // Apenas filtrar por user_id se NÃO tiver acesso global
-      if (!hasGlobalProcessAccess && user?.id) {
-        financeiroQuery = financeiroQuery.eq("user_id", user.id);
-      }
+        let financeiroQuery = supabase
+          .from("financeiro")
+          .select("*")
+          .eq("cliente_nome", cliente.nome)
+          .order("created_at", { ascending: true });
 
-      const { data: financeiroData, error: financeiroError } =
-        await financeiroQuery;
+        // Apenas filtrar por user_id se NÃO tiver acesso global
+        if (!hasGlobalProcessAccess && user?.id) {
+          financeiroQuery = financeiroQuery.eq("user_id", user.id);
+        }
 
-      if (!financeiroError && financeiroData && financeiroData.length > 0) {
-        // Processar dados financeiros para reconstruir os valores originais
-        const entrada = financeiroData.find((f) => f.tipo === "Entrada");
-        const honorarios = financeiroData.filter(
-          (f) => f.tipo === "Honorários"
-        );
-        const tmp = financeiroData.filter((f) => f.tipo === "TMP");
+        const { data: financeiroData, error: financeiroError } =
+          await financeiroQuery;
 
-        const valorHonorarios =
-          honorarios.reduce((total, h) => total + Number(h.valor), 0) +
-          (entrada ? Number(entrada.valor) : 0);
+        console.log("[NewProcess] Dados financeiros retornados:", financeiroData);
 
-        setFinanceiroData({
-          valorHonorarios: valorHonorarios.toLocaleString("pt-BR", {
-            style: "currency",
-            currency: "BRL",
-          }),
-          valorEntrada: entrada
-            ? Number(entrada.valor).toLocaleString("pt-BR", {
+        if (!financeiroError && financeiroData && financeiroData.length > 0) {
+          // Processar dados financeiros para reconstruir os valores originais
+          const entrada = financeiroData.find((f) => f.tipo === "Entrada");
+          const honorarios = financeiroData.filter(
+            (f) => f.tipo === "Honorários"
+          );
+          const tmp = financeiroData.filter((f) => f.tipo === "TMP");
+
+          const valorHonorarios =
+            honorarios.reduce((total, h) => total + Number(h.valor), 0) +
+            (entrada ? Number(entrada.valor) : 0);
+
+          setFinanceiroData({
+            valorHonorarios: valorHonorarios.toLocaleString("pt-BR", {
+              style: "currency",
+              currency: "BRL",
+            }),
+            valorEntrada: entrada
+              ? Number(entrada.valor).toLocaleString("pt-BR", {
                 style: "currency",
                 currency: "BRL",
               })
-            : "",
-          dataEntrada: entrada?.vencimento || "",
-          quantidadeParcelas: honorarios.length.toString(),
-          dataPrimeiroVencimento: honorarios[0]?.vencimento || "",
-          incluirTMP: tmp.length > 0,
-          valorTMP:
-            tmp.length > 0
-              ? Number(tmp[0].valor).toLocaleString("pt-BR", {
+              : "",
+            dataEntrada: entrada?.vencimento || "",
+            quantidadeParcelas: honorarios.length.toString(),
+            dataPrimeiroVencimento: honorarios[0]?.vencimento || "",
+            incluirTMP: tmp.length > 0,
+            valorTMP:
+              tmp.length > 0
+                ? Number(tmp[0].valor).toLocaleString("pt-BR", {
                   style: "currency",
                   currency: "BRL",
                 })
-              : "",
-          vencimentoTMP: tmp[0]?.vencimento || "",
-          quantidadeMesesTMP: tmp.length.toString(),
-        });
+                : "",
+            vencimentoTMP: tmp[0]?.vencimento || "",
+            quantidadeMesesTMP: tmp.length.toString(),
+          });
+        }
+      } else {
+        console.warn("[NewProcess] Cliente sem nome - não é possível carregar dados financeiros");
       }
 
       // Carregar observações
@@ -529,6 +583,7 @@ const NewProcess = () => {
                   {
                     user_id: user.id,
                     cliente_nome: clienteData.nomeCompleto,
+                    processo_id: processoCreatedId,
                     valor: valorEntrada,
                     tipo: "Entrada",
                     status: "PENDENTE",
@@ -565,6 +620,7 @@ const NewProcess = () => {
                       user_id: user.id,
                       cliente_nome: clienteData.nomeCompleto,
                       valor: valorParcela,
+                      processo_id: processoCreatedId,
                       tipo: "Honorários",
                       status: "PENDENTE",
                       vencimento: dataVencimento.toISOString(),
@@ -604,6 +660,7 @@ const NewProcess = () => {
                     {
                       user_id: user.id,
                       cliente_nome: clienteData.nomeCompleto,
+                      processo_id: processoCreatedId,
                       valor: valorTMP,
                       tipo: "TMP",
                       status: "PENDENTE",
@@ -711,6 +768,7 @@ const NewProcess = () => {
             numero_processo: processoData.numeroProcesso,
             tipo_processo: processoData.tipoProcesso,
             prazo: processoData.temPrazo ? processoData.prazo : null,
+            cliente_preso: processoData.clientePreso,
           })
           .eq("id", processoId);
 
@@ -775,6 +833,7 @@ const NewProcess = () => {
               cliente_id: clienteCreated.id,
               tipo_processo: processoData.tipoProcesso,
               prazo: processoData.temPrazo ? processoData.prazo : null,
+              cliente_preso: processoData.clientePreso,
               status: "ATIVO",
             },
           ])
@@ -816,6 +875,7 @@ const NewProcess = () => {
                   {
                     user_id: user.id,
                     cliente_nome: clienteData.nomeCompleto,
+                    processo_id: processoCreatedId,
                     valor: valorEntrada,
                     tipo: "Entrada",
                     status: "PENDENTE",
@@ -852,6 +912,7 @@ const NewProcess = () => {
                       user_id: user.id,
                       cliente_nome: clienteData.nomeCompleto,
                       valor: valorParcela,
+                      processo_id: processoCreatedId,
                       tipo: "Honorários",
                       status: "PENDENTE",
                       vencimento: dataVencimento.toISOString(),
@@ -891,6 +952,7 @@ const NewProcess = () => {
                     {
                       user_id: user.id,
                       cliente_nome: clienteData.nomeCompleto,
+                      processo_id: processoCreatedId,
                       valor: valorTMP,
                       tipo: "TMP",
                       status: "PENDENTE",
@@ -998,31 +1060,24 @@ const NewProcess = () => {
       }
 
       // SALVAR DOCUMENTOS (para ambos os modos)
-      console.log("=== SALVANDO DOCUMENTOS ===");
+      console.log("=== VINCULANDO DOCUMENTOS ===");
       if (documentos.length > 0 && processoCreatedId) {
         for (const documento of documentos) {
-          // Inserir novo documento (não tentar atualizar para evitar problemas com UUID)
+          // Apenas atualiza o processo_id dos documentos que já foram enviados pelo DocumentUpload
           const { error: docError } = await supabase
             .from("documentos_processo")
-            .insert([
-              {
-                user_id: user.id,
-                processo_id: processoCreatedId,
-                cliente_nome: clienteData.nomeCompleto,
-                nome_arquivo: documento.nome_arquivo,
-                tipo_arquivo: documento.tipo_arquivo,
-                tamanho_arquivo: documento.tamanho_arquivo,
-                url_arquivo: documento.url_arquivo,
-                descricao: documento.descricao || "",
-              },
-            ]);
+            .update({
+              processo_id: processoCreatedId,
+              cliente_nome: clienteData.nomeCompleto, // Garante que o nome esteja correto
+            })
+            .eq("id", documento.id);
 
           if (docError) {
-            console.error("Erro ao salvar documento:", docError);
+            console.error("Erro ao vincular documento:", docError);
             throw docError;
           }
         }
-        console.log("Documentos salvos com sucesso");
+        console.log("Documentos vinculados com sucesso");
       }
       Swal.fire({
         title: "Sucesso!",
@@ -1218,12 +1273,7 @@ const NewProcess = () => {
           <Input
             id="numeroProcesso"
             value={processoData.numeroProcesso}
-            onChange={(e) =>
-              setProcessoData({
-                ...processoData,
-                numeroProcesso: e.target.value,
-              })
-            }
+            onChange={(e) => handleNumeroProcessoChange(e.target.value)}
             placeholder="0000000-00.0000.0.00.0000"
             required
           />
@@ -1249,6 +1299,19 @@ const NewProcess = () => {
             </SelectContent>
           </Select>
         </div>
+
+        {processoData.tipoProcesso === "Criminal" && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="clientePreso"
+              checked={processoData.clientePreso}
+              onCheckedChange={(checked) =>
+                setProcessoData({ ...processoData, clientePreso: checked as boolean })
+              }
+            />
+            <Label htmlFor="clientePreso">Cliente Preso</Label>
+          </div>
+        )}
 
         <div className="flex items-center space-x-2">
           <Checkbox
@@ -1529,7 +1592,7 @@ const NewProcess = () => {
                         <span className="font-medium">Total TMP:</span>{" "}
                         {formatCurrency(
                           parseCurrency(financeiroData.valorTMP) *
-                            parseInt(financeiroData.quantidadeMesesTMP)
+                          parseInt(financeiroData.quantidadeMesesTMP)
                         )}
                         <br />
                         <span className="font-medium">Valor Mensal:</span>{" "}
@@ -1868,7 +1931,7 @@ const NewProcess = () => {
                           </span>{" "}
                           {formatCurrency(
                             parseCurrency(financeiroData.valorTMP) *
-                              parseInt(financeiroData.quantidadeMesesTMP)
+                            parseInt(financeiroData.quantidadeMesesTMP)
                           )}
                         </p>
                       )}
@@ -1878,10 +1941,10 @@ const NewProcess = () => {
                         <span className="font-medium">Valor Total Geral:</span>{" "}
                         {formatCurrency(
                           parseCurrency(financeiroData.valorHonorarios) +
-                            (financeiroData.incluirTMP
-                              ? parseCurrency(financeiroData.valorTMP) *
-                                parseInt(financeiroData.quantidadeMesesTMP)
-                              : 0)
+                          (financeiroData.incluirTMP
+                            ? parseCurrency(financeiroData.valorTMP) *
+                            parseInt(financeiroData.quantidadeMesesTMP)
+                            : 0)
                         )}
                       </p>
                       <p className="text-muted-foreground text-xs mt-2">
@@ -1951,8 +2014,8 @@ const NewProcess = () => {
             {loading
               ? "Salvando..."
               : isEditMode
-              ? "Atualizar Processo"
-              : "Finalizar Cadastro"}
+                ? "Atualizar Processo"
+                : "Finalizar Cadastro"}
           </Button>
         </div>
       </CardContent>
@@ -1976,53 +2039,46 @@ const NewProcess = () => {
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center space-x-4">
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                currentStep >= 1
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 1
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+                }`}
             >
               1
             </div>
             <div
-              className={`w-16 h-1 ${
-                currentStep >= 2 ? "bg-primary" : "bg-muted"
-              }`}
+              className={`w-16 h-1 ${currentStep >= 2 ? "bg-primary" : "bg-muted"
+                }`}
             ></div>
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                currentStep >= 2
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 2
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+                }`}
             >
               2
             </div>
             <div
-              className={`w-16 h-1 ${
-                currentStep >= 3 ? "bg-primary" : "bg-muted"
-              }`}
+              className={`w-16 h-1 ${currentStep >= 3 ? "bg-primary" : "bg-muted"
+                }`}
             ></div>
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                currentStep >= 3
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 3
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+                }`}
             >
               3
             </div>
             <div
-              className={`w-16 h-1 ${
-                currentStep >= 4 ? "bg-primary" : "bg-muted"
-              }`}
+              className={`w-16 h-1 ${currentStep >= 4 ? "bg-primary" : "bg-muted"
+                }`}
             ></div>
             <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                currentStep >= 4
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground"
-              }`}
+              className={`w-8 h-8 rounded-full flex items-center justify-center ${currentStep >= 4
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted text-muted-foreground"
+                }`}
             >
               4
             </div>

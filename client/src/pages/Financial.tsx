@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog.tsx";
 import { useFinanceiroData, useClientesData } from "@/hooks/useFinanceiroData";
+import { FinanceiroFiltroCliente } from "@/components/FinanceiroFiltroCliente.tsx";
 import { AppHeader } from "@/components/AppHeader";
 
 const Financial = () => {
@@ -44,7 +45,6 @@ const Financial = () => {
   const { clientes } = useClientesData();
   const [filtroStatus, setFiltroStatus] = useState<string>("TODOS");
   const [filtroTipo, setFiltroTipo] = useState<string>("TODOS");
-  const [filtroMes, setFiltroMes] = useState<string>("TODOS");
   const [filtroCliente, setFiltroCliente] = useState<string>("TODOS");
   const [excluirDialogOpen, setExcluirDialogOpen] = useState(false);
   const [parcelaParaExcluir, setParcelaParaExcluir] = useState<{
@@ -109,7 +109,6 @@ const Financial = () => {
       const { error } = await supabase
         .from("financeiro")
         .delete()
-        .eq("user_id", user.id)
         .eq("cliente_nome", clienteNome);
 
       if (error) throw error;
@@ -144,21 +143,7 @@ const Financial = () => {
     const clienteMatch =
       filtroCliente === "TODOS" || item.cliente_nome === filtroCliente;
 
-    // Filtro por mês
-    let mesMatch = true;
-    if (filtroMes !== "TODOS" && item.vencimento) {
-      const vencimentoDate = new Date(item.vencimento);
-      const mesVencimento = vencimentoDate.getMonth() + 1;
-      const anoVencimento = vencimentoDate.getFullYear();
-      const anoAtual = new Date().getFullYear();
-
-      const [mesFiltro, anoFiltro] = filtroMes.split("-").map(Number);
-      mesMatch =
-        mesVencimento === mesFiltro &&
-        anoVencimento === (anoFiltro || anoAtual);
-    }
-
-    return statusMatch && tipoMatch && clienteMatch && mesMatch;
+    return statusMatch && tipoMatch && clienteMatch;
   });
 
   const isVencido = (vencimento: string | null, status: string | null) => {
@@ -195,7 +180,10 @@ const Financial = () => {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
-        <h1 className="text-xl sm:text-2xl font-bold mb-6">Gestao Financeira</h1>
+        <div className="flex items-center gap-4 mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold">Gestao Financeira</h1>
+          <SubtleNotificationBell />
+        </div>
 
         {/* Cards de Resumo usando o componente */}
         <FinanceiroSummary
@@ -205,19 +193,12 @@ const Financial = () => {
         />
 
         <Tabs defaultValue="financeiro" className="w-full">
-          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto">
+          <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 h-auto">
             <TabsTrigger value="financeiro" className="text-xs sm:text-sm">Gestão Financeira</TabsTrigger>
             <TabsTrigger value="relatorios" className="text-xs sm:text-sm">Relatórios e Gráficos</TabsTrigger>
-            <TabsTrigger value="responsavel" className="text-xs sm:text-sm">
-              Responsável Financeiro
-            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="financeiro" className="space-y-6">
-            {/* Notificações Sutis */}
-            <div className="flex justify-end">
-              <SubtleNotificationBell />
-            </div>
 
             {/* Filtros */}
             <Card>
@@ -225,7 +206,7 @@ const Financial = () => {
                 <CardTitle>Filtros</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">
                       Status:
@@ -257,48 +238,11 @@ const Financial = () => {
                     </select>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Mês:
-                    </label>
-                    <select
-                      value={filtroMes}
-                      onChange={(e) => setFiltroMes(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md bg-background"
-                    >
-                      <option value="TODOS">Todos</option>
-                      <option value="1">Janeiro</option>
-                      <option value="2">Fevereiro</option>
-                      <option value="3">Março</option>
-                      <option value="4">Abril</option>
-                      <option value="5">Maio</option>
-                      <option value="6">Junho</option>
-                      <option value="7">Julho</option>
-                      <option value="8">Agosto</option>
-                      <option value="9">Setembro</option>
-                      <option value="10">Outubro</option>
-                      <option value="11">Novembro</option>
-                      <option value="12">Dezembro</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Cliente:
-                    </label>
-                    <select
-                      value={filtroCliente}
-                      onChange={(e) => setFiltroCliente(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md bg-background"
-                    >
-                      <option value="TODOS">Todos</option>
-                      {clientes.map((cliente) => (
-                        <option key={cliente.nome} value={cliente.nome}>
-                          {cliente.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <FinanceiroFiltroCliente
+                    clientes={clientes}
+                    value={filtroCliente}
+                    onChange={(val) => setFiltroCliente(val)}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -421,26 +365,26 @@ const Financial = () => {
                                 {parcelasCliente.filter(
                                   (item) => item.status === "PENDENTE"
                                 ).length > 3 && (
-                                  <div className="text-center pt-2">
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() =>
-                                        navigate(
-                                          `/financeiro/cliente/${encodeURIComponent(
-                                            cliente
-                                          )}`
-                                        )
-                                      }
-                                    >
-                                      Ver mais{" "}
-                                      {parcelasCliente.filter(
-                                        (item) => item.status === "PENDENTE"
-                                      ).length - 3}{" "}
-                                      parcelas pendentes...
-                                    </Button>
-                                  </div>
-                                )}
+                                    <div className="text-center pt-2">
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                          navigate(
+                                            `/financeiro/cliente/${encodeURIComponent(
+                                              cliente
+                                            )}`
+                                          )
+                                        }
+                                      >
+                                        Ver mais{" "}
+                                        {parcelasCliente.filter(
+                                          (item) => item.status === "PENDENTE"
+                                        ).length - 3}{" "}
+                                        parcelas pendentes...
+                                      </Button>
+                                    </div>
+                                  )}
                               </div>
                             </div>
                           );
@@ -455,10 +399,6 @@ const Financial = () => {
 
           <TabsContent value="relatorios">
             <FinancialReports financeiro={financeiro} />
-          </TabsContent>
-
-          <TabsContent value="responsavel">
-            <ResponsavelFinanceiro />
           </TabsContent>
         </Tabs>
 
@@ -493,8 +433,8 @@ const Financial = () => {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
