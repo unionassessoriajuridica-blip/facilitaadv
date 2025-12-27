@@ -57,43 +57,11 @@ app.use("/api/google", (req, res, next) => {
 app.use("/api/email", (req, res, next) => {
   import("./routes/email").then(m => m.default(req, res, next)).catch(next);
 });
+app.use("/api/tasks", (req, res, next) => {
+  import("./routes/tasks").then(m => m.default(req, res, next)).catch(next);
+});
 app.use("/api/alerts", (req, res, next) => {
   import("./routes/alerts").then(m => m.default(req, res, next)).catch(next);
-});
-
-// Inline tasks route - fetches ALL tasks without user filter
-app.get("/api/tasks", async (req, res) => {
-  try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) return res.status(401).json({ error: "Authorization header required" });
-
-    const { process_id, status } = req.query;
-    const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-    const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    let queryParams = ["select=*", "order=due_date.asc"];
-    if (process_id) queryParams.push(`process_id=eq.${process_id}`);
-    if (status) queryParams.push(`status=eq.${status}`);
-
-    const tasksResponse = await fetch(`${SUPABASE_URL}/rest/v1/tasks?${queryParams.join("&")}`, {
-      headers: {
-        "apikey": SUPABASE_SERVICE_KEY || "",
-        "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`
-      },
-    });
-
-    if (!tasksResponse.ok) {
-      const error = await tasksResponse.text();
-      log(`[Tasks API] Supabase error ${tasksResponse.status}: ${error}`);
-      return res.status(tasksResponse.status).send(error);
-    }
-
-    const tasks = await tasksResponse.json();
-    res.json(tasks);
-  } catch (error: any) {
-    log(`[Tasks API] Error: ${error.message}`);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // Dashboard stats routes - using SERVICE_ROLE_KEY to bypass RLS

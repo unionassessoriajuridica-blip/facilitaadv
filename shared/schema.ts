@@ -191,12 +191,27 @@ export const zapsignDocuments = pgTable("zapsign_documents", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const tasks = pgTable("tasks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  processId: uuid("process_id").notNull().references(() => processos.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  dueDate: timestamp("due_date").notNull(),
+  status: text("status").default("pending"),
+  priority: text("priority").default("medium"),
+  notifyClient: boolean("notify_client").default(false),
+  notificationSent: boolean("notification_sent").default(false),
+  syncedWithGoogle: boolean("synced_with_google").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertClienteSchema = createInsertSchema(clientes).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertProcessoSchema = createInsertSchema(processos).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertFinanceiroSchema = createInsertSchema(financeiro).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertChatConversationSchema = createInsertSchema(chatConversations).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertNotificacaoSchema = createInsertSchema(notificacoes).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertTaskSchema = createInsertSchema(tasks).omit({ id: true, createdAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -210,6 +225,8 @@ export type InsertChatConversation = z.infer<typeof insertChatConversationSchema
 export type ChatConversation = typeof chatConversations.$inferSelect;
 export type InsertNotificacao = z.infer<typeof insertNotificacaoSchema>;
 export type Notificacao = typeof notificacoes.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
+export type Task = typeof tasks.$inferSelect;
 
 export const insertZapsignDocumentSchema = createInsertSchema(zapsignDocuments).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertZapsignDocument = z.infer<typeof insertZapsignDocumentSchema>;
