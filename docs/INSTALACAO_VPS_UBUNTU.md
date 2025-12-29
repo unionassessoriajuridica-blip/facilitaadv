@@ -73,20 +73,21 @@ nano .env
 Adicione as seguintes variaveis (substitua pelos seus valores):
 
 ```env
-# Supabase
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-anon-key-aqui
-
-# Google OAuth (obter no Google Cloud Console)
-VITE_GOOGLE_CLIENT_ID=seu-client-id.apps.googleusercontent.com
-VITE_GOOGLE_CLIENT_SECRET=seu-client-secret
-
-# ZapSign
-ZAPSIGN_API_TOKEN=seu-token-zapsign
-
-# Resend (para envio de emails)
-RESEND_API_KEY=re_sua-chave-resend
-
+VITE_APP_URL=http://facilita.adv.br:5000
+VITE_GOOGLE_CLIENT_ID=90141190775-umb0unbs2p364trac8kt6t12onrt85ak.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_SECRET=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
+VITE_SUPABASE_URL=https://zskyvltkzcpkelusvbbm.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpza3l2bHRremNwa2VsdXN2YmJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2MTAwNzMsImV4cCI6MjA3MDE4NjA3M30.SSkuEXqIIG316-9d-YX1hbj-XRIN0uBZr6KEsjuhLuc
+GOOGLE_CLIENT_SECRET=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
+GOOGLE_CLIENT_ID=90141190775-umb0unbs2p364trac8kt6t12onrt85ak.apps.googleusercontent.com
+SUPABASE_URL=https://zskyvltkzcpkelusvbbm.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpza3l2bHRremNwa2VsdXN2YmJtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ2MTAwNzMsImV4cCI6MjA3MDE4NjA3M30.SSkuEXqIIG316-9d-YX1hbj-XRIN0uBZr6KEsjuhLuc
+DATAJUD_API_KEY=cDZHYzlZa0JadVREZDJCendQbXY6SkJlTzNjLV9TRENyQk1RdnFKZGRQdw==
+OPENAI_API_KEY=
+RESEND_API_KEY=re_Daxz5hgU_9cPhx4tT7saQCQ3ZRWouJCGb
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpza3l2bHRremNwa2VsdXN2YmJtIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDYxMDA3MywiZXhwIjoyMDcwMTg2MDczfQ.BijO6tdmnjPBpH_4YRFhoIL5lMaU3R016Sy0Sy6ZaXs
+ZAPSIGN_API_TOKEN=44edada3-08f2-4e92-9f52-525c16bbf85383868400-12f1-4c69-a912-bb34e1ef9350
+SESSION_SECRET=BI2R36FaPhmP+ck3x3eM5KDwLxZ2oHMqpN2veWyjahrnEpBYkKw3ufJMLCPDIUpVcpYO0M53cOF4jqZke/H5+A==
 # Producao
 NODE_ENV=production
 PORT=5000
@@ -133,7 +134,7 @@ Cole a seguinte configuracao (substitua `seudominio.com.br`):
 ```nginx
 server {
     listen 80;
-    server_name seudominio.com.br www.seudominio.com.br;
+    server_name facilita.adv.br www.facilita.adv.br;
 
     location / {
         proxy_pass http://localhost:5000;
@@ -174,7 +175,7 @@ sudo systemctl enable nginx
 sudo apt install -y certbot python3-certbot-nginx
 
 # Obter certificado SSL (substitua pelo seu email e dominio)
-sudo certbot --nginx -d seudominio.com.br -d www.seudominio.com.br
+sudo certbot --nginx -d facilita.adv.br -d www.facilita.adv.br
 
 # Renovacao automatica ja esta configurada
 # Para testar: sudo certbot renew --dry-run
@@ -199,7 +200,7 @@ Apos a instalacao, configure o webhook no painel do ZapSign:
 1. Acesse o painel do ZapSign
 2. Va em Configuracoes > Webhooks
 3. Adicione novo webhook:
-   - URL: `https://seudominio.com.br/api/zapsign/webhook`
+   - URL: `https://facilita.adv.br/api/zapsign/webhook`
    - Evento: `documento-assinado`
 4. (Opcional) Configure um secret e adicione como `ZAPSIGN_WEBHOOK_SECRET` no `.env`
 
@@ -210,8 +211,8 @@ No Google Cloud Console:
 1. Acesse APIs e Servicos > Credenciais
 2. Edite seu OAuth 2.0 Client ID
 3. Em "URIs de redirecionamento autorizados", adicione:
-   - `https://seudominio.com.br/api/auth/google/callback`
-   - `https://seudominio.com.br/google-callback`
+   - `https://facilita.adv.br/api/auth/google/callback`
+   - `https://facilita.adv.br/google-callback`
 
 ## Comandos Uteis
 
