@@ -49,7 +49,7 @@ export const useClienteExcel = () => {
       // Criar planilha
       const worksheet = XLSX.utils.json_to_sheet(excelData);
       const workbook = XLSX.utils.book_new();
-      
+
       // Ajustar larguras das colunas
       const columnWidths = [
         { wch: 30 }, // Nome
@@ -66,8 +66,8 @@ export const useClienteExcel = () => {
 
       // Gerar arquivo Excel
       const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([excelBuffer], { 
-        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      const blob = new Blob([excelBuffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
       });
 
       // Fazer download
@@ -95,7 +95,7 @@ export const useClienteExcel = () => {
     console.log('Iniciando upload do Excel:', file.name);
     setImporting(true);
     setProgress(0);
-    
+
     try {
       // Read Excel file
       const arrayBuffer = await file.arrayBuffer();
@@ -113,13 +113,13 @@ export const useClienteExcel = () => {
       const processedRows = jsonData.map((row, index) => processExcelRow(row, index));
       const validRows = processedRows.filter(row => row.errors.length === 0);
       const invalidRows = processedRows.filter(row => row.errors.length > 0);
-      
+
       setProgress(30);
 
       if (validRows.length === 0) {
         const allErrors = processedRows.flatMap(row => row.errors);
         await generateErrorReport(allErrors, file.name);
-        
+
         toast({
           title: 'Nenhum registro válido',
           description: `Todas as ${jsonData.length} linhas contêm erros. Relatório de erros gerado.`,
@@ -144,11 +144,10 @@ export const useClienteExcel = () => {
 
       setProgress(50);
 
-      // Check for duplicates
+      // Sistema GLOBAL: Exportar TODOS os clientes
       const existingClientes = await supabase
         .from('clientes')
-        .select('email, cpf_cnpj')
-        .eq('user_id', user.user.id);
+        .select('email, cpf_cnpj');
 
       const existingEmails = new Set(existingClientes.data?.map(c => c.email).filter(Boolean));
       const existingCpfCnpj = new Set(existingClientes.data?.map(c => c.cpf_cnpj).filter(Boolean));
@@ -161,14 +160,14 @@ export const useClienteExcel = () => {
       });
 
       const duplicatesSkipped = validRows.length - clientesToInsert.length;
-      
+
       setProgress(70);
 
       // Insert valid clients and create processes
       let importedCount = 0;
       let processesCreated = 0;
       const clienteProcessMap = new Map<string, string>(); // Maps client ID to process data
-      
+
       if (clientesToInsert.length > 0) {
         // Remove process fields from client data for insertion
         const clientesComUserId = clientesToInsert.map(row => {
@@ -193,7 +192,7 @@ export const useClienteExcel = () => {
             // Continue with next batch instead of failing completely
           } else {
             importedCount += batch.length;
-            
+
             // Map client names to IDs for process creation
             if (insertedClientes) {
               insertedClientes.forEach((cliente, batchIndex) => {
@@ -209,7 +208,7 @@ export const useClienteExcel = () => {
               });
             }
           }
-          
+
           setProgress(70 + (i / clientesComUserId.length) * 15);
         }
 
@@ -307,7 +306,7 @@ export const useClienteExcel = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(errorData);
     const workbook = XLSX.utils.book_new();
-    
+
     const columnWidths = [
       { wch: 8 },  // Linha
       { wch: 15 }, // Campo
@@ -319,8 +318,8 @@ export const useClienteExcel = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Erros');
 
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     });
 
     const fileName = `erros_${originalFileName.replace('.xlsx', '')}_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -342,14 +341,14 @@ export const useClienteExcel = () => {
         'Bairro': 'Centro',
         'Cidade': 'São Paulo',
         'CEP': '01234-567',
-        
+
         // Dados do Processo
         'Número do Processo': '0001234-56.2024.8.26.0100',
         'Tipo de Processo': 'Criminal',
         'Prazo': '2024-12-31',
         'Descrição': 'Processo de defesa criminal',
         'Cliente Preso': 'Não',
-        
+
         // Dados Financeiros
         'Valor Honorários': '15000',
         'Valor Entrada': '3000',
@@ -360,7 +359,7 @@ export const useClienteExcel = () => {
         'Valor TMP': '500',
         'Vencimento TMP': '2024-01-31',
         'Quantidade Meses TMP': '24',
-        
+
         // Responsável Financeiro
         'Responsável Nome': 'Maria Silva Santos',
         'Responsável RG': '98.765.432-1',
@@ -375,7 +374,7 @@ export const useClienteExcel = () => {
 
     const worksheet = XLSX.utils.json_to_sheet(templateData);
     const workbook = XLSX.utils.book_new();
-    
+
     // Ajustar larguras das colunas
     const columnWidths = [
       { wch: 25 }, // Nome
@@ -416,8 +415,8 @@ export const useClienteExcel = () => {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Completo');
 
     const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-    const blob = new Blob([excelBuffer], { 
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    const blob = new Blob([excelBuffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     });
 
     saveAs(blob, 'template_processo_completo.xlsx');

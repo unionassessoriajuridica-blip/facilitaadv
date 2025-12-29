@@ -2,7 +2,7 @@ import { Router } from "express";
 
 const router = Router();
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY; // Global access
 
 // GET /api/tasks - Listar tarefas
 router.get("/", async (req, res) => {
@@ -18,9 +18,8 @@ router.get("/", async (req, res) => {
 
         const response = await fetch(`${SUPABASE_URL}/rest/v1/tasks?${queryParams.join("&")}`, {
             headers: {
-                "apikey": SUPABASE_ANON_KEY || "",
-                "Authorization": authHeader,
-                "Prefer": "return=representation"
+                "apikey": SUPABASE_SERVICE_KEY || "",
+                "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}` // Bypass RLS for global access
             },
         });
 
@@ -45,8 +44,8 @@ router.post("/", async (req, res) => {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/tasks`, {
             method: "POST",
             headers: {
-                "apikey": SUPABASE_ANON_KEY || "",
-                "Authorization": authHeader,
+                "apikey": SUPABASE_SERVICE_KEY || "",
+                "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
                 "Content-Type": "application/json",
                 "Prefer": "return=representation"
             },
@@ -77,8 +76,8 @@ router.patch("/", async (req, res) => {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${id}`, {
             method: "PATCH",
             headers: {
-                "apikey": SUPABASE_ANON_KEY || "",
-                "Authorization": authHeader,
+                "apikey": SUPABASE_SERVICE_KEY || "",
+                "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`,
                 "Content-Type": "application/json",
                 "Prefer": "return=representation"
             },
@@ -109,8 +108,8 @@ router.delete("/", async (req, res) => {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/tasks?id=eq.${id}`, {
             method: "DELETE",
             headers: {
-                "apikey": SUPABASE_ANON_KEY || "",
-                "Authorization": authHeader
+                "apikey": SUPABASE_SERVICE_KEY || "",
+                "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}`
             }
         });
 

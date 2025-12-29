@@ -88,6 +88,9 @@ interface GoogleCalendarCardProps {
 }
 
 export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
+  isConnected,
+  onConnect,
+  onDisconnect,
   googleAuth,
   googleCalendar,
   dialogOpen = false,
@@ -299,7 +302,7 @@ export const GoogleCalendarCard: React.FC<GoogleCalendarCardProps> = ({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => googleCalendar.loadEvents(calendarId)}
+              onClick={() => googleCalendar.loadEvents()}
               disabled={googleCalendar.loading}
             >
               {googleCalendar.loading ? (

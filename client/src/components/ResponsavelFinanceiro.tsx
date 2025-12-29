@@ -46,10 +46,10 @@ export function ResponsavelFinanceiro() {
     if (!user) return;
 
     try {
+      // Sistema GLOBAL: Todos usuários veem TODOS os responsáveis financeiros
       const { data: responsavel, error } = await supabase
         .from('responsavel_financeiro')
         .select('*')
-        .eq('user_id', user.id)
         .maybeSingle();
 
       if (error) {
@@ -170,7 +170,7 @@ export function ResponsavelFinanceiro() {
               placeholder="Digite o nome completo"
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="rg">RG</Label>
             <Input

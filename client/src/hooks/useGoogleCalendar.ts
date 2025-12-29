@@ -29,7 +29,19 @@ export const useGoogleCalendar = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const loadEvents = async (facilitaOnly: boolean = false) => {
+  const transformGoogleEvent = React.useCallback((item: any): CalendarEvent => ({
+    id: item.id,
+    title: item.summary || "Sem título",
+    description: item.description,
+    start: new Date(item.start.dateTime || item.start.date),
+    end: new Date(item.end.dateTime || item.end.date),
+    location: item.location,
+    attendees: item.attendees?.map((a: any) => a.email) || [],
+    type: getEventType(item.summary || ""),
+    status: item.status || "confirmed",
+  }), []);
+
+  const loadEvents = React.useCallback(async (facilitaOnly: boolean = false) => {
     setLoading(true);
     try {
       const timeMin = new Date().toISOString();
@@ -53,21 +65,9 @@ export const useGoogleCalendar = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [transformGoogleEvent]);
 
-  const transformGoogleEvent = (item: any): CalendarEvent => ({
-    id: item.id,
-    title: item.summary || "Sem título",
-    description: item.description,
-    start: new Date(item.start.dateTime || item.start.date),
-    end: new Date(item.end.dateTime || item.end.date),
-    location: item.location,
-    attendees: item.attendees?.map((a: any) => a.email) || [],
-    type: getEventType(item.summary || ""),
-    status: item.status || "confirmed",
-  });
-
-  const createEvent = async (eventData: CreateEventParams) => {
+  const createEvent = React.useCallback(async (eventData: CreateEventParams) => {
     try {
       const response = await fetch('/api/google/calendar/events', {
         method: "POST",
@@ -103,9 +103,9 @@ export const useGoogleCalendar = () => {
       });
       return null;
     }
-  };
+  }, [toast, loadEvents]);
 
-  const deleteEvent = async (eventId: string) => {
+  const deleteEvent = React.useCallback(async (eventId: string) => {
     try {
       const response = await fetch(`/api/google/calendar/events/${eventId}`, {
         method: "DELETE",
@@ -131,7 +131,7 @@ export const useGoogleCalendar = () => {
       });
       return false;
     }
-  };
+  }, [toast, loadEvents]);
 
   const getEventType = (summary: string): CalendarEvent["type"] => {
     const lowerSummary = summary.toLowerCase();
@@ -141,11 +141,11 @@ export const useGoogleCalendar = () => {
     return "outros";
   };
 
-  return {
+  return React.useMemo(() => ({
     events,
     loading,
     loadEvents,
     createEvent,
     deleteEvent,
-  };
+  }), [events, loading, loadEvents, createEvent, deleteEvent]);
 };

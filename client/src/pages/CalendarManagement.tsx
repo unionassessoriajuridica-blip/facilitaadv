@@ -41,7 +41,7 @@ const CalendarManagement = () => {
   });
 
   // Configuração do Google OAuth
-  const googleAuth = useGoogleAuth({
+  const { isAuthenticated: isAuth, ...googleAuth } = useGoogleAuth({
     clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
     scopes: [
       "https://www.googleapis.com/auth/userinfo.email",
@@ -55,7 +55,7 @@ const CalendarManagement = () => {
     "audiencia" | "reuniao" | "prazo" | "outros" | null
   >(null);
 
-  const googleCalendar = useGoogleCalendar();
+  const { loadEvents, events: calendarEvents, ...googleCalendar } = useGoogleCalendar();
 
   // Função para atualizar estatísticas
   const updateStatistics = useCallback((events: any[]) => {
@@ -92,11 +92,11 @@ const CalendarManagement = () => {
 
   // Função para carregar dados
   const loadCalendarData = useCallback(async () => {
-    if (!googleAuth.isAuthenticated) return;
+    if (!isAuth) return;
 
     setIsLoading(true);
     try {
-      const events = await googleCalendar.loadEvents();
+      const events = await loadEvents();
       updateStatistics(events);
     } catch (error) {
       console.error("Erro ao carregar eventos:", error);
@@ -108,14 +108,14 @@ const CalendarManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [googleAuth.isAuthenticated, googleCalendar, updateStatistics]);
+  }, [isAuth, loadEvents, updateStatistics]);
 
   // Sincroniza quando autenticação ou diálogo mudar
   useEffect(() => {
-    if (googleAuth.isAuthenticated) {
+    if (isAuth) {
       loadCalendarData();
     }
-  }, [googleAuth.isAuthenticated, loadCalendarData]);
+  }, [isAuth, loadCalendarData]);
 
   // Adicione este useEffect para resetar o initialEventType quando o diálogo fechar
   useEffect(() => {
@@ -145,7 +145,7 @@ const CalendarManagement = () => {
 
   // Formata os próximos eventos para exibição
   const getUpcomingEvents = () => {
-    return googleCalendar.events.slice(0, 3).map((event) => ({
+    return calendarEvents.slice(0, 3).map((event) => ({
       id: event.id,
       title: event.title,
       date: format(event.start, "dd/MM/yyyy", { locale: ptBR }),
@@ -178,11 +178,11 @@ const CalendarManagement = () => {
             {/* Google Calendar Integration */}
             <div className="lg:col-span-2">
               <GoogleCalendarCard
-                isConnected={googleAuth.isAuthenticated}
+                isConnected={isAuth}
                 onConnect={handleConnectGoogle}
                 onDisconnect={handleDisconnectGoogle}
-                googleAuth={googleAuth}
-                googleCalendar={googleCalendar}
+                googleAuth={{ isAuthenticated: isAuth, ...googleAuth }}
+                googleCalendar={{ loadEvents, events: calendarEvents, ...googleCalendar }}
                 dialogOpen={dialogOpen}
                 onDialogOpenChange={setDialogOpen}
                 initialType={initialEventType}

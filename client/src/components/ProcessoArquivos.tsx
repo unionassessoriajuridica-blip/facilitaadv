@@ -25,6 +25,7 @@ import {
   CloudOff,
   FolderSync,
   AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 import { useGoogleDrive } from "@/hooks/useGoogleDrive";
 import { useToast } from "@/hooks/use-toast";
@@ -42,6 +43,7 @@ interface Documento {
   google_drive_file_id?: string;
   google_drive_folder_id?: string;
   google_drive_link?: string;
+  assinado_digitalmente?: boolean;  // Badge "Assinado Digitalmente"
   created_at: string;
 }
 
@@ -113,65 +115,42 @@ export function ProcessoArquivos({
     setUploadProgress(0);
 
     try {
-      const fileExt = selectedFile.name.split(".").pop();
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = `processos/${processoId}/${fileName}`;
-
-      const progressInterval = setInterval(() => {
-        setUploadProgress((prev) => Math.min(prev + 10, 70));
-      }, 200);
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from("documentos")
-        .upload(filePath, selectedFile, {
-          cacheControl: "3600",
-          upsert: false,
+      if (!isConnected) {
+        toast({
+          title: "Drive não conectado",
+          description: "O Google Drive é obrigatório para o armazenamento de documentos.",
+          variant: "destructive",
         });
-
-      clearInterval(progressInterval);
-
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("documentos")
-        .getPublicUrl(filePath);
-
-      setUploadProgress(80);
-
-      let driveFileId = null;
-      let driveFolderId = null;
-      let driveLink = null;
-
-      if (isConnected) {
-        try {
-          const driveResult = await uploadToDrive(selectedFile, numeroProcesso, selectedFile.name);
-          if (driveResult) {
-            driveFileId = driveResult.fileId;
-            driveFolderId = driveResult.folderId;
-            driveLink = driveResult.webViewLink;
-          }
-        } catch (driveError) {
-          console.error("Drive sync failed, continuing with Supabase only:", driveError);
-        }
+        return;
       }
 
-      setUploadProgress(90);
+      setUploadProgress(10);
 
-      const insertData: Record<string, any> = {
+      // 1. Upload DIRETO para o Google Drive
+      const driveResult = await uploadToDrive(selectedFile, numeroProcesso, selectedFile.name);
+
+      if (!driveResult) {
+        throw new Error("Falha ao sincronizar arquivo com o Google Drive");
+      }
+
+      setUploadProgress(70);
+
+      // 2. Salvar metadados na NOVA tabela do Supabase
+      const insertData = {
         user_id: user.id,
-        cliente_nome: clienteNome,
         processo_id: processoId,
         nome_arquivo: selectedFile.name,
         tipo_arquivo: selectedFile.type,
         tamanho_arquivo: selectedFile.size,
-        url_arquivo: urlData.publicUrl,
+        google_drive_file_id: driveResult.fileId,
+        google_drive_folder_id: driveResult.folderId,
+        google_drive_link: driveResult.webViewLink,
         descricao: descricao || null,
-        google_drive_file_id: driveFileId || null,
-        google_drive_folder_id: driveFolderId || null,
-        google_drive_link: driveLink || null,
       };
 
-      const { error: dbError } = await supabase.from("documentos_processo").insert(insertData as any);
+      const { error: dbError } = await supabase
+        .from("processo_documentos_drive")
+        .insert(insertData as any);
 
       if (dbError) throw dbError;
 
@@ -179,9 +158,7 @@ export function ProcessoArquivos({
 
       toast({
         title: "Arquivo enviado",
-        description: driveFileId
-          ? "Arquivo salvo e sincronizado com Google Drive"
-          : "Arquivo salvo com sucesso",
+        description: "Arquivo salvo e sincronizado com Google Drive",
       });
 
       setIsDialogOpen(false);
@@ -224,7 +201,7 @@ export function ProcessoArquivos({
         };
 
         await supabase
-          .from("documentos_processo")
+          .from("processo_documentos_drive")
           .update(updateData)
           .eq("id", doc.id);
 
@@ -251,13 +228,8 @@ export function ProcessoArquivos({
     if (!confirm("Tem certeza que deseja remover este arquivo?")) return;
 
     try {
-      const filePath = doc.url_arquivo.split("/documentos/")[1];
-      if (filePath) {
-        await supabase.storage.from("documentos").remove([filePath]);
-      }
-
       const { error } = await supabase
-        .from("documentos_processo")
+        .from("processo_documentos_drive")
         .delete()
         .eq("id", doc.id);
 
@@ -360,6 +332,12 @@ export function ProcessoArquivos({
                         )}
                       </div>
                     </div>
+                    {doc.assinado_digitalmente && (
+                      <Badge variant="outline" className="gap-1 bg-green-500/10 text-green-600 border-green-500/20 flex-shrink-0" data-testid={`badge-digital-signature-${doc.id}`}>
+                        <CheckCircle className="w-3 h-3" />
+                        Assinado Digitalmente
+                      </Badge>
+                    )}
                     {doc.google_drive_file_id && (
                       <Badge variant="outline" className="gap-1 bg-blue-500/10 text-blue-600 border-blue-500/20 flex-shrink-0" data-testid={`badge-drive-synced-${doc.id}`}>
                         <Cloud className="w-3 h-3" />
@@ -408,7 +386,7 @@ export function ProcessoArquivos({
                       data-testid={`button-view-${doc.id}`}
                     >
                       <a
-                        href={doc.url_arquivo}
+                        href={doc.google_drive_link || "#"}
                         target="_blank"
                         rel="noopener noreferrer"
                       >

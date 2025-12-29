@@ -12,7 +12,7 @@ function getApiToken(): string {
 
 export async function createDocument(request: ZapsignCreateDocRequest): Promise<ZapsignDocResponse> {
   const token = getApiToken();
-  
+
   const response = await fetch(`${ZAPSIGN_API_URL}/docs/`, {
     method: 'POST',
     headers: {
@@ -42,7 +42,7 @@ export async function createDocument(request: ZapsignCreateDocRequest): Promise<
 
 export async function getDocument(documentToken: string): Promise<ZapsignDocResponse> {
   const token = getApiToken();
-  
+
   const response = await fetch(`${ZAPSIGN_API_URL}/docs/${documentToken}/`, {
     method: 'GET',
     headers: {
@@ -61,7 +61,7 @@ export async function getDocument(documentToken: string): Promise<ZapsignDocResp
 
 export async function listDocuments(page: number = 1): Promise<{ results: ZapsignDocResponse[]; count: number }> {
   const token = getApiToken();
-  
+
   const response = await fetch(`${ZAPSIGN_API_URL}/docs/?page=${page}`, {
     method: 'GET',
     headers: {
@@ -80,7 +80,7 @@ export async function listDocuments(page: number = 1): Promise<{ results: Zapsig
 
 export async function deleteDocument(documentToken: string): Promise<void> {
   const token = getApiToken();
-  
+
   const response = await fetch(`${ZAPSIGN_API_URL}/docs/${documentToken}/`, {
     method: 'DELETE',
     headers: {
@@ -108,7 +108,7 @@ export function buildSignerFromCliente(cliente: {
 }): ZapsignSigner {
   const telefone = cliente.telefone?.replace(/\D/g, '') || '';
   const phone_number = telefone.length >= 10 ? telefone.slice(-11) : '';
-  
+
   return {
     name: cliente.nome,
     email: cliente.email || '',
@@ -121,3 +121,50 @@ export function buildSignerFromCliente(cliente: {
     require_cpf: options?.require_cpf ?? true,
   };
 }
+
+/**
+ * Create document using ZapSign OneClick API
+ * OneClick provides simplified signature experience (checkbox + optional signature drawing)
+ */
+export async function createDocumentOneClick(request: import('@shared/schema').ZapsignOneClickRequest): Promise<import('@shared/schema').ZapsignDocResponse> {
+  const token = getApiToken();
+
+  const response = await fetch(`${ZAPSIGN_API_URL}/docs/`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: request.name,
+      base64_pdf: request.base64_pdf,
+      url_pdf: request.url_pdf,
+      base64_docx: request.base64_docx,
+      url_docx: request.url_docx,
+      signers: request.signers,
+      one_click_active: true, // ALWAYS true for OneClick
+      require_signature: request.require_signature ?? true,
+      lang: request.lang || 'pt-br',
+      brand_name: request.brand_name || 'FACILITA ADV',
+      brand_logo: request.brand_logo,
+      brand_primary_color: request.brand_primary_color,
+      external_id: request.external_id || '',
+      folder_path: request.folder_path || '/',
+      date_limit_to_sign: request.date_limit_to_sign,
+      signature_order_active: request.signature_order_active || false,
+      observers: request.observers || [],
+      reminder_every_n_days: request.reminder_every_n_days,
+      disable_signer_emails: request.disable_signer_emails || false,
+      allow_refuse_signature: request.allow_refuse_signature || false,
+      disable_signers_get_original_file: request.disable_signers_get_original_file || false,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`ZapSign OneClick API error: ${response.status} - ${errorText}`);
+  }
+
+  return response.json();
+}
+

@@ -11,18 +11,18 @@ async function apiRequest<T>(url: string, options?: RequestInit): Promise<T> {
     },
     ...options,
   });
-  
+
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Request failed' }));
     throw new Error(error.error || 'Request failed');
   }
-  
+
   return response.json();
 }
 
 export function useZapSignCreateDocument() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (request: ZapsignCreateDocRequest): Promise<ZapsignDocResponse> => {
       return apiRequest<ZapsignDocResponse>(`${API_BASE}/documents`, {
@@ -60,7 +60,7 @@ export function useZapSignDocuments(page: number = 1) {
 
 export function useZapSignDeleteDocument() {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
     mutationFn: async (token: string): Promise<{ success: boolean }> => {
       return apiRequest<{ success: boolean }>(`${API_BASE}/documents/${token}`, {
@@ -122,80 +122,94 @@ export interface CreateDocumentFromProcessoParams {
   sendEmail?: boolean;
   sendWhatsapp?: boolean;
   dateLimitToSign?: string;
+  ordemAssinatura?: boolean; // OneClick
   additionalSigners?: AdditionalSignerParams[];
   witnesses?: WitnessParams[];
 }
 
 export function useZapSignCreateDocumentFromProcesso() {
   const createDocument = useZapSignCreateDocument();
-  
+
   return useMutation({
     mutationFn: async (params: CreateDocumentFromProcessoParams): Promise<ZapsignDocResponse> => {
-      const signers: ZapsignSigner[] = [];
-      
-      const mainSigner: ZapsignSigner = {
+      const signers: any[] = []; // Use any to include OneClick fields
+      let currentOrderGroup = 1;
+
+      // Cliente (sempre primeiro se ordem ativa)
+      const mainSigner = {
         name: params.clienteNome,
         email: params.clienteEmail || '',
-        phone_country: '55',
-        phone_number: params.clienteTelefone?.replace(/\D/g, '').slice(-11) || '',
-        cpf: params.clienteCpfCnpj?.replace(/\D/g, '') || '',
-        auth_mode: 'assinaturaTela',
+        phone_country: params.clienteTelefone ? '55' : undefined,
+        phone_number: params.clienteTelefone?.replace(/\D/g, '').slice(-11) || undefined,
+        cpf: params.clienteCpfCnpj?.replace(/\D/g, '') || undefined,
+        // OneClick
+        qualification: 'parte',
         send_automatic_email: params.sendEmail ?? false,
         send_automatic_whatsapp: params.sendWhatsapp ?? false,
-        require_cpf: true,
+        order_group: params.ordemAssinatura ? currentOrderGroup++ : undefined,
       };
       signers.push(mainSigner);
 
+      // Signatários adicionais
       if (params.additionalSigners && params.additionalSigners.length > 0) {
         for (const addSigner of params.additionalSigners) {
           if (addSigner.nome && addSigner.email) {
-            const signer: ZapsignSigner = {
+            const signer = {
               name: addSigner.nome,
               email: addSigner.email,
-              phone_country: '55',
-              phone_number: addSigner.telefone?.replace(/\D/g, '').slice(-11) || '',
-              cpf: addSigner.cpf_cnpj?.replace(/\D/g, '') || '',
-              auth_mode: 'assinaturaTela',
-              send_automatic_email: true,
+              phone_country: addSigner.telefone ? '55' : undefined,
+              phone_number: addSigner.telefone?.replace(/\D/g, '').slice(-11) || undefined,
+              cpf: addSigner.cpf_cnpj?.replace(/\D/g, '') || undefined,
+              // OneClick
+              qualification: 'parte',
+              send_automatic_email: false,
               send_automatic_whatsapp: false,
-              require_cpf: false,
+              order_group: params.ordemAssinatura ? currentOrderGroup++ : undefined,
             };
             signers.push(signer);
           }
         }
       }
 
+      // Testemunhas
       if (params.witnesses && params.witnesses.length > 0) {
         for (const witness of params.witnesses) {
           if (witness.nome && witness.email) {
-            const witnessSigner: ZapsignSigner = {
-              name: `[Testemunha] ${witness.nome}`,
+            const witnessSigner = {
+              name: witness.nome,
               email: witness.email,
               phone_country: '55',
               phone_number: '',
               cpf: witness.cpf?.replace(/\D/g, '') || '',
-              auth_mode: 'assinaturaTela',
-              send_automatic_email: true,
+              // OneClick
+              qualification: 'testemunha',
+              send_automatic_email: false,
               send_automatic_whatsapp: false,
-              require_cpf: false,
+              order_group: params.ordemAssinatura ? currentOrderGroup++ : undefined,
             };
             signers.push(witnessSigner);
           }
         }
       }
 
-      const request: ZapsignCreateDocRequest = {
+      const request = {
+        useOneClick: true, // SEMPRE OneClick
         name: params.documentName,
         url_pdf: params.pdfUrl,
         base64_pdf: params.pdfBase64,
         signers: signers,
         lang: 'pt-br',
+        require_signature: true,
+        signature_order_active: params.ordemAssinatura || false,
         external_id: params.processoId,
         date_limit_to_sign: params.dateLimitToSign,
         folder_path: '/facilita-adv/',
+        // Email params for backend
+        notifyEmail: true, // Enable custom emails
+        clientName: params.clienteNome,
       };
 
-      return createDocument.mutateAsync(request);
+      return createDocument.mutateAsync(request as any);
     },
   });
 }

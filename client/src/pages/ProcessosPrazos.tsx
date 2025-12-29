@@ -61,10 +61,7 @@ const ProcessosPrazos = () => {
           clientes (nome)
         `);
 
-      if (!hasGlobalProcessAccess && user?.id) {
-        processosQuery = processosQuery.eq("user_id", user.id);
-      }
-
+      // Sistema GLOBAL: Todos usuários veem TODOS os processos
       const { data: processos, error: processosError } = await processosQuery;
 
       if (processosError) {
@@ -98,7 +95,7 @@ const ProcessosPrazos = () => {
 
       processos.forEach(processo => {
         const tarefasDoProcesso = (tarefas || []).filter((t: any) => t.process_id === processo.id);
-        
+
         const tarefasVencidas = tarefasDoProcesso.filter((t: any) => t.due_date < hoje);
         const tarefasAVencer = tarefasDoProcesso.filter((t: any) => t.due_date >= hoje);
 
@@ -152,7 +149,7 @@ const ProcessosPrazos = () => {
   };
 
   const renderProcessoRow = (processo: ProcessoComTarefas, isVencido: boolean) => (
-    <TableRow 
+    <TableRow
       key={processo.id}
       className="cursor-pointer hover:bg-muted/50"
       onClick={() => navigate(`/processo/${processo.id}`)}
@@ -175,12 +172,12 @@ const ProcessosPrazos = () => {
                     {Math.abs(getDiasRestantes(tarefa.due_date))} dias atrasado
                   </Badge>
                 ) : (
-                  <Badge 
+                  <Badge
                     variant={getDiasRestantes(tarefa.due_date) <= 3 ? "destructive" : "outline"}
                     className="text-xs"
                   >
-                    {getDiasRestantes(tarefa.due_date) === 0 
-                      ? "Hoje" 
+                    {getDiasRestantes(tarefa.due_date) === 0
+                      ? "Hoje"
                       : `${getDiasRestantes(tarefa.due_date)} dias`}
                   </Badge>
                 )}
@@ -247,14 +244,14 @@ const ProcessosPrazos = () => {
           <CardContent className="p-0">
             <Tabs defaultValue="vencidos" className="w-full">
               <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
-                <TabsTrigger 
-                  value="vencidos" 
+                <TabsTrigger
+                  value="vencidos"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent"
                 >
                   <AlertTriangle className="w-4 h-4 mr-2 text-red-500" />
                   Vencidos ({processosVencidos.length})
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="avencer"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-500 data-[state=active]:bg-transparent"
                 >

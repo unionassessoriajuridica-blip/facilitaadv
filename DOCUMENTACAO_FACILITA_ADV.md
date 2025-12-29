@@ -102,14 +102,444 @@ Motor de IA baseado em modelos LLM de última geração (Gemini):
 
 ## 5. Modelo de Dados (Schema PostgreSQL)
 
-O sistema utiliza PostgreSQL com tabelas interconectadas. Abaixo as tabelas críticas para o funcionamento:
+O sistema utiliza PostgreSQL com tabelas interconectadas. Abaixo o schema completo atualizado:
 
-1. **clientes**: Armazena o cadastro básico e dados de contato.
-2. **processos**: Tabela central vinculada a um cliente e a um advogado.
-3. **financeiro**: Registros de 'Entrada', 'Honorários' e 'TMP'. Possui `processo_id` (Obrigatório após auditoria v2.0).
-4. **documentos_processo**: Referência aos arquivos físicos no Supabase Storage.
-5. **notificacoes**: Alertas de sistema e financeiros enviados aos usuários.
-6. **zapsign_documents**: Gestão de processos de assinatura digital via ZapSign.
+### Tabelas Principais
+
+#### 1. **clientes**
+Armazena o cadastro básico de clientes e dados de contato.
+
+```sql
+CREATE TABLE public.clientes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  nome text NOT NULL,
+  email text,
+  telefone text,
+  cpf_cnpj text,
+  endereco text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 2. **processos**
+Tabela central vinculada a um cliente e a um advogado. Inclui integração completa com DataJud.
+
+```sql
+CREATE TABLE public.processos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  cliente_id uuid NOT NULL REFERENCES public.clientes(id),
+  numero_processo text NOT NULL,
+  tipo_processo text NOT NULL,
+  cliente_preso boolean DEFAULT false,
+  descricao text,
+  prazo date,
+  status text DEFAULT 'ATIVO'::text,
+  
+  -- Campos DataJud
+  datajud_tribunal text,
+  datajud_classe text,
+  datajud_classe_codigo integer,
+  datajud_sistema text,
+  datajud_formato text,
+  datajud_grau text,
+  datajud_data_ajuizamento text,
+  datajud_movimentos jsonb,
+  datajud_ultima_atualizacao_cnj timestamp with time zone,
+  datajud_ultima_movimentacao timestamp with time zone,
+  datajud_atualizado_em timestamp with time zone,
+  datajud_sigilo boolean DEFAULT false,
+  
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 3. **financeiro**
+Registros financeiros de 'Entrada', 'Honorários' e 'TMP'. Possui `processo_id` obrigatório.
+
+```sql
+CREATE TABLE public.financeiro (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  processo_id uuid REFERENCES public.processos(id),
+  cliente_nome text NOT NULL,
+  valor numeric NOT NULL,
+  tipo text NOT NULL,
+  status text DEFAULT 'PENDENTE'::text,
+  vencimento date,
+  data_pagamento date,
+  
+  -- Controle de cobranças
+  ultimo_envio_cobranca timestamp with time zone,
+  tentativas_cobranca integer DEFAULT 0,
+  
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 4. **prazos**
+Gestão completa de prazos processuais com cálculo automático de dias úteis/corridos.
+
+```sql
+CREATE TABLE public.prazos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  processo_id uuid NOT NULL REFERENCES public.processos(id),
+  movimento_codigo integer NOT NULL,
+  movimento_descricao text NOT NULL,
+  movimento_data timestamp with time zone NOT NULL,
+  
+  tipo_prazo text NOT NULL CHECK (tipo_prazo IN (
+    'INTIMACAO', 'RESPOSTA', 'RECURSO', 'CIENCIA', 
+    'MANIFESTACAO', 'CONTRARRAZOES', 'IMPUGNACAO', 
+    'VERIFICACAO', 'DESPACHO'
+  )),
+  
+  dias_prazo integer NOT NULL CHECK (dias_prazo > 0 AND dias_prazo <= 365),
+  data_inicio date NOT NULL,
+  data_final date NOT NULL,
+  dias_corridos boolean NOT NULL DEFAULT false,
+  
+  status text NOT NULL DEFAULT 'ATIVO' CHECK (status IN (
+    'ATIVO', 'CUMPRIDO', 'VENCIDO', 'CANCELADO'
+  )),
+  
+  cumprido_em timestamp with time zone,
+  observacoes text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 5. **notificacoes**
+Alertas de sistema, financeiros e processuais enviados aos usuários.
+
+```sql
+CREATE TABLE public.notificacoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  tipo text NOT NULL,  -- Ex: 'PARCELAS_EM_ABERTO', 'PRAZO_VENCIDO'
+  titulo text NOT NULL,
+  mensagem text NOT NULL,
+  cliente_nome text,
+  lida boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+### Tabelas de Documentos
+
+#### 6. **documentos_processo**
+Referência aos arquivos físicos no Supabase Storage (sistema legado).
+
+```sql
+CREATE TABLE public.documentos_processo (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  processo_id uuid,
+  cliente_nome text NOT NULL,
+  nome_arquivo text NOT NULL,
+  tipo_arquivo text NOT NULL,
+  tamanho_arquivo bigint NOT NULL,
+  url_arquivo text NOT NULL,
+  descricao text,
+  
+  -- Campos Google Drive (legado)
+  google_drive_file_id text,
+  google_drive_folder_id text,
+  google_drive_link text,
+  
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 7. **processo_documentos_drive**
+Documentos armazenados exclusivamente no Google Drive.
+
+```sql
+CREATE TABLE public.processo_documentos_drive (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  processo_id uuid REFERENCES public.processos(id),
+  user_id uuid REFERENCES auth.users(id),
+  nome_arquivo text NOT NULL,
+  tipo_arquivo text,
+  tamanho_arquivo bigint,
+  google_drive_file_id text NOT NULL,
+  google_drive_folder_id text,
+  google_drive_link text,
+  descricao text,
+  created_at timestamp with time zone NOT NULL DEFAULT timezone('utc', now())
+);
+```
+
+#### 8. **documentos_digitais**
+Gestão de documentos via DocuSeal.
+
+```sql
+CREATE TABLE public.documentos_digitais (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  nome text NOT NULL,
+  tipo text,
+  status text NOT NULL DEFAULT 'TEMPLATE_CRIADO',
+  docuseal_template_id text,
+  docuseal_submission_id text,
+  signatarios jsonb,
+  webhook_data jsonb,
+  metadata jsonb DEFAULT '{}',
+  tamanho bigint,
+  data_conclusao timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 9. **zapsign_documents**
+Gestão de processos de assinatura digital via ZapSign.
+
+```sql
+CREATE TABLE public.zapsign_documents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id integer,
+  processo_id uuid,
+  cliente_id uuid,
+  nome text NOT NULL,
+  zapsign_token text,
+  zapsign_open_id integer,
+  status text DEFAULT 'pending',
+  original_file_url text,
+  signed_file_url text,
+  signatarios jsonb,
+  external_id text,
+  date_limit_to_sign timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now()
+);
+```
+
+### Tabelas de Integrações
+
+#### 10. **google_integration**
+Tokens OAuth2 para integração Google Workspace por usuário.
+
+```sql
+CREATE TABLE public.google_integration (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL UNIQUE REFERENCES auth.users(id),
+  access_token text,
+  refresh_token text,
+  token_expiry timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 11. **google_system_credentials**
+Credenciais OAuth2 do sistema (nível organização).
+
+```sql
+CREATE TABLE public.google_system_credentials (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  service_type varchar NOT NULL UNIQUE,
+  access_token text,
+  refresh_token text,
+  token_expiry timestamp with time zone,
+  scopes text[],
+  email varchar,
+  connected_at timestamp with time zone DEFAULT now(),
+  connected_by uuid REFERENCES auth.users(id),
+  updated_at timestamp with time zone DEFAULT now(),
+  is_active boolean DEFAULT true,
+  metadata jsonb DEFAULT '{}'
+);
+```
+
+#### 12. **datajud_sync_log**
+Auditoria de sincronizações com DataJud/CNJ.
+
+```sql
+CREATE TABLE public.datajud_sync_log (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  ultimo_sync timestamp with time zone NOT NULL,
+  processos_consultados integer DEFAULT 0,
+  prazos_novos integer DEFAULT 0,
+  prazos_atualizados integer DEFAULT 0,
+  status text DEFAULT 'success',
+  error_message text,
+  created_at timestamp with time zone DEFAULT now()
+);
+```
+
+### Tabelas de Tarefas e Observações
+
+#### 13. **tasks**
+Tarefas vinculadas a processos com sincronização Google Calendar.
+
+```sql
+CREATE TABLE public.tasks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  process_id uuid NOT NULL REFERENCES public.processos(id),
+  title text NOT NULL,
+  description text,
+  due_date date NOT NULL,
+  priority text NOT NULL DEFAULT 'medium',
+  status text NOT NULL DEFAULT 'pending',
+  notify_client boolean NOT NULL DEFAULT false,
+  notification_sent boolean NOT NULL DEFAULT false,
+  synced_with_google boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 14. **observacoes_processo**
+Anotações internas sobre processos.
+
+```sql
+CREATE TABLE public.observacoes_processo (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  processo_id uuid,
+  cliente_nome text NOT NULL,
+  titulo text NOT NULL,
+  conteudo text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 15. **chat_conversations**
+Histórico de conversas com IA Facilita.
+
+```sql
+CREATE TABLE public.chat_conversations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  title text NOT NULL,
+  messages jsonb NOT NULL DEFAULT '[]',
+  mode text NOT NULL DEFAULT 'chat',
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+### Tabelas de Autenticação e Permissões
+
+#### 16. **profiles**
+Perfis de usuário vinculados ao Supabase Auth.
+
+```sql
+CREATE TABLE public.profiles (
+  id uuid PRIMARY KEY REFERENCES auth.users(id),
+  email text NOT NULL UNIQUE
+);
+```
+
+#### 17. **user_roles**
+Funções de usuário (master, admin, user).
+
+```sql
+CREATE TABLE public.user_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  role text NOT NULL DEFAULT 'default',
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 18. **user_permissions**
+Permissões granulares (READ, WRITE, ADMIN).
+
+```sql
+CREATE TABLE public.user_permissions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  permission permission_type NOT NULL,  -- ENUM
+  granted_by uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 19. **user_invitations**
+Gerenciamento de convites para novos usuários.
+
+```sql
+CREATE TABLE public.user_invitations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text NOT NULL,
+  nome text NOT NULL,
+  permissions permission_type[] NOT NULL DEFAULT '{}',
+  invited_by uuid NOT NULL,
+  status text NOT NULL DEFAULT 'PENDING',
+  token text NOT NULL DEFAULT gen_random_uuid()::text UNIQUE,
+  expires_at timestamp with time zone NOT NULL DEFAULT (now() + interval '7 days'),
+  accepted_at timestamp with time zone,
+  user_id uuid REFERENCES auth.users(id),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+### Tabelas Auxiliares
+
+#### 20. **responsavel_financeiro**
+Dados do responsável financeiro vinculado a processos.
+
+```sql
+CREATE TABLE public.responsavel_financeiro (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  processo_id uuid REFERENCES public.processos(id),
+  nome text NOT NULL,
+  rg text NOT NULL,
+  cpf text NOT NULL,
+  data_nascimento date NOT NULL,
+  telefone text NOT NULL,
+  email text NOT NULL,
+  endereco_completo text NOT NULL,
+  cep text NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+#### 21. **documentos_assinatura**
+Legado - documentos de assinatura.
+
+```sql
+CREATE TABLE public.documentos_assinatura (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL REFERENCES auth.users(id),
+  nome text NOT NULL,
+  tipo text NOT NULL,
+  status text DEFAULT 'PENDENTE',
+  data_envio timestamp with time zone DEFAULT now(),
+  data_assinatura timestamp with time zone,
+  signatarios uuid[] DEFAULT '{}',
+  arquivo_url text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+```
+
+### Resumo de Relacionamentos
+
+```
+clientes (1) ←→ (N) processos
+processos (1) ←→ (N) financeiro
+processos (1) ←→ (N) prazos
+processos (1) ←→ (N) tasks
+processos (1) ←→ (N) documentos_processo
+processos (1) ←→ (N) processo_documentos_drive
+processos (1) ←→ (1) responsavel_financeiro
+auth.users (1) ←→ (N) todas as tabelas (user_id)
+```
 
 ---
 
@@ -150,4 +580,4 @@ Todas as alterações de banco de dados são versionadas na pasta `./supabase/mi
 
 ---
 *Última Atualização: 27 de Dezembro de 2024*
-*Versão do Sistema: 2.5 (Auditoria & Prazos Edition)*
+*Versão do Sistema: 2.6 (Schema Unificado + Auditoria & Prazos Edition)*

@@ -12,7 +12,6 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100
 router.get("/system/status", async (req: Request, res: Response) => {
     try {
         const status = await googleSystemAuthService.getConnectionStatus();
-        console.log("[Google System] Status request result:", status);
         res.json(status);
     } catch (error: any) {
         console.error("[Google System] Status error:", error);
@@ -67,9 +66,12 @@ router.post("/system/disconnect", async (req: Request, res: Response) => {
 
 // --- Drive ---
 router.get("/drive/status", async (_req, res) => {
-    const connected = await googleDriveService.isConnected();
-    console.log("[Google Drive] Status request result:", connected);
-    res.json({ connected });
+    try {
+        const connected = await googleDriveService.isConnected();
+        res.json({ connected });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 router.get("/drive/root-folder", async (_req, res) => {

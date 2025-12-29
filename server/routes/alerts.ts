@@ -55,9 +55,9 @@ router.get("/", async (req, res) => {
             }
         } catch (e) { console.log("[Alerts] Error proc:", e); }
 
-        // Fetch signatures (FaciliSign)
+        // Fetch signatures (FaciliSign) from zapsign_documents
         try {
-            const sigRes = await fetch(`${SUPABASE_URL}/rest/v1/documentos_digitais?status=eq.ENVIADO_PARA_ASSINATURA&order=created_at.desc&select=*`, {
+            const sigRes = await fetch(`${SUPABASE_URL}/rest/v1/zapsign_documents?status=eq.pending&order=created_at.desc&select=*`, {
                 headers: { "apikey": SUPABASE_SERVICE_KEY || "", "Authorization": `Bearer ${SUPABASE_SERVICE_KEY}` },
             });
             if (sigRes.ok) {

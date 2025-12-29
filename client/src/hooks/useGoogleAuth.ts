@@ -282,17 +282,17 @@ export const useGoogleAuth = (config: GoogleAuthConfig): GoogleAuthReturn => {
     }
   }, [state.accessToken, state.gsiLoaded, toast]);
 
-  return {
+  return React.useMemo(() => ({
     isAuthenticated: state.isAuthenticated,
     userInfo: state.userInfo,
     isLoading: state.isLoading,
     signIn,
     signOut,
     getAccessToken: () => state.accessToken,
-    setAccessToken: (token: string | null) =>
-      setState((prev) => ({ ...prev, accessToken: token })),
-    setIsAuthenticated: (value: boolean) =>
-      setState((prev) => ({ ...prev, isAuthenticated: value })),
+    setAccessToken: React.useCallback((token: string | null) =>
+      setState((prev) => ({ ...prev, accessToken: token })), []),
+    setIsAuthenticated: React.useCallback((value: boolean) =>
+      setState((prev) => ({ ...prev, isAuthenticated: value })), []),
     clientId: config.clientId,
-  };
+  }), [state.isAuthenticated, state.userInfo, state.isLoading, signIn, signOut, state.accessToken, config.clientId]);
 };

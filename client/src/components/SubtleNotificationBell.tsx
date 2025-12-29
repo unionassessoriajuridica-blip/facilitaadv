@@ -40,6 +40,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Database } from "@/integrations/supabase/types";
+import { useNotificationService } from "@/hooks/useNotificationService";
 
 type Notificacao = Database['public']['Tables']['notificacoes']['Row'];
 
@@ -70,12 +71,25 @@ export const SubtleNotificationBell: React.FC = () => {
   // Seleção Múltipla
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // Hook centralizado de notificações
+  const { checkFinancialAlerts } = useNotificationService({
+    enableLocalStorageThrottle: true,
+    throttleWindowHours: 24,
+  });
+
   useEffect(() => {
     if (user) {
       loadNotificacoes();
-      checkAndCreateNotifications();
+
+      // Verificar alertas financeiros com throttle automático
+      checkFinancialAlerts().then((count) => {
+        if (count > 0) {
+          console.log(`[SubtleNotificationBell] ${count} novos alertas financeiros criados`);
+          loadNotificacoes();
+        }
+      });
     }
-  }, [user]);
+  }, [user, checkFinancialAlerts]);
 
   const loadNotificacoes = async () => {
     try {
@@ -93,76 +107,7 @@ export const SubtleNotificationBell: React.FC = () => {
     }
   };
 
-  const checkAndCreateNotifications = async () => {
-    try {
-      if (!user) return;
 
-      const today = new Date();
-      const lastRunKey = `notif_last_run_${user.id}`;
-      const lastRunDate = localStorage.getItem(lastRunKey);
-      const todayString = today.toISOString().split('T')[0];
-
-      if (lastRunDate === todayString) {
-        console.log("[Notificações] Verificação diária já realizada hoje.");
-        return;
-      }
-
-      const { data: financeiro, error } = await supabase
-        .from('financeiro')
-        .select('cliente_nome, status')
-        .eq('status', 'PENDENTE');
-
-      if (error) throw error;
-
-      const clientesComParcelas: { [key: string]: number } = {};
-      financeiro?.forEach(item => {
-        if (item.cliente_nome) {
-          clientesComParcelas[item.cliente_nome] = (clientesComParcelas[item.cliente_nome] || 0) + 1;
-        }
-      });
-
-      let createdCount = 0;
-      for (const [cliente_nome, count] of Object.entries(clientesComParcelas)) {
-        if (count >= 3) {
-          // Busca robusta: Qualquer notificação desse tipo para o cliente nos últimos 7 dias
-          const sevenDaysAgo = new Date();
-          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-          const { data: existingNotifications } = await supabase
-            .from('notificacoes')
-            .select('id')
-            .eq('cliente_nome', cliente_nome)
-            .eq('tipo', 'PARCELAS_EM_ABERTO')
-            .gte('created_at', sevenDaysAgo.toISOString())
-            .limit(1);
-
-          if (!existingNotifications || existingNotifications.length === 0) {
-            await supabase
-              .from('notificacoes')
-              .insert({
-                user_id: user.id,
-                tipo: 'PARCELAS_EM_ABERTO',
-                titulo: 'Atenção: Parcelas em Aberto',
-                mensagem: `O cliente ${cliente_nome} possui ${count} parcelas pendentes. Considere entrar em contato.`,
-                cliente_nome: cliente_nome,
-                lida: false
-              });
-            createdCount++;
-          }
-        }
-      }
-
-      if (createdCount > 0) {
-        loadNotificacoes();
-      }
-
-      // Registra que a verificação de hoje foi concluída
-      localStorage.setItem(lastRunKey, todayString);
-
-    } catch (error: any) {
-      console.error('Erro ao verificar parcelas:', error);
-    }
-  };
 
   const loadProcessosInfo = async (cliente_nome: string) => {
     try {

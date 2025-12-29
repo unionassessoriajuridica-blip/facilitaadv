@@ -192,14 +192,8 @@ const NewProcess = () => {
         )
         .eq("id", id);
 
-      // Apenas filtrar por user_id se NÃO tiver acesso global
-      // E garantir que hasGlobalProcessAccess está carregado corretamente
-      if (!hasGlobalProcessAccess && user?.id) {
-        console.log("🔍 Filtrando processo por user_id:", user.id);
-        processoQuery = processoQuery.eq("user_id", user.id);
-      } else {
-        console.log("🔍 Visualizando todos os processos (acesso global)");
-      }
+      // Sistema GLOBAL: Todos usuários veem TODOS os processos
+      console.log("🔍 Visualizando todos os processos (acesso global)");
 
       const { data: processo, error: processoError } =
         await processoQuery.single();
@@ -308,10 +302,7 @@ const NewProcess = () => {
           .eq("cliente_nome", cliente.nome)
           .order("created_at", { ascending: true });
 
-        // Apenas filtrar por user_id se NÃO tiver acesso global
-        if (!hasGlobalProcessAccess && user?.id) {
-          financeiroQuery = financeiroQuery.eq("user_id", user.id);
-        }
+        // Sistema GLOBAL: Todos usuários veem TODOS os dados financeiros
 
         const { data: financeiroData, error: financeiroError } =
           await financeiroQuery;
@@ -360,12 +351,11 @@ const NewProcess = () => {
         console.warn("[NewProcess] Cliente sem nome - não é possível carregar dados financeiros");
       }
 
-      // Carregar observações
+      // Sistema GLOBAL: Carregar TODAS as observações
       const { data: observacoesData, error: observacoesError } = await supabase
         .from("observacoes_processo")
         .select("*")
-        .eq("processo_id", id)
-        .eq("user_id", user?.id);
+        .eq("processo_id", id);
 
       if (!observacoesError && observacoesData) {
         setObservacoes(
@@ -377,12 +367,11 @@ const NewProcess = () => {
         );
       }
 
-      // Carregar documentos
+      // Sistema GLOBAL: Carregar TODOS os documentos
       const { data: documentosData, error: documentosError } = await supabase
         .from("documentos_processo")
         .select("*")
-        .eq("processo_id", id)
-        .eq("user_id", user?.id);
+        .eq("processo_id", id);
 
       if (!documentosError && documentosData) {
         setDocumentos(documentosData);
@@ -544,12 +533,11 @@ const NewProcess = () => {
         // 🔥 ADICIONE ESTA PARTE - LIMPAR E RECRIAR DADOS FINANCEIROS
         console.log("=== ATUALIZANDO REGISTROS FINANCEIROS ===");
 
-        // Primeiro limpar os registros financeiros existentes
+        // Sistema GLOBAL: Limpar registros financeiros do cliente
         const { error: deleteFinanceError } = await supabase
           .from("financeiro")
           .delete()
-          .eq("cliente_nome", clienteData.nomeCompleto)
-          .eq("user_id", user.id);
+          .eq("cliente_nome", clienteData.nomeCompleto);
 
         if (deleteFinanceError) {
           console.error("Erro ao limpar financeiro:", deleteFinanceError);
@@ -774,21 +762,20 @@ const NewProcess = () => {
 
         if (processoError) throw processoError;
 
-        // Limpar observações e documentos existentes antes de adicionar os novos
+        // Sistema GLOBAL: Limpar observações do processo
         const { error: deleteObsError } = await supabase
           .from("observacoes_processo")
           .delete()
-          .eq("processo_id", processoId)
-          .eq("user_id", user.id);
+          .eq("processo_id", processoId);
 
         if (deleteObsError)
           console.error("Erro ao limpar observações:", deleteObsError);
 
+        // Sistema GLOBAL: Limpar documentos do processo
         const { error: deleteDocsError } = await supabase
           .from("documentos_processo")
           .delete()
-          .eq("processo_id", processoId)
-          .eq("user_id", user.id);
+          .eq("processo_id", processoId);
 
         if (deleteDocsError)
           console.error("Erro ao limpar documentos:", deleteDocsError);

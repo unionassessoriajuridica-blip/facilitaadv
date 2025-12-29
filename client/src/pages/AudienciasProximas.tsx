@@ -72,10 +72,7 @@ const AudienciasProximas = () => {
         .gte("prazo", hojeStr)
         .order("prazo", { ascending: true });
 
-      if (!hasGlobalProcessAccess && user?.id) {
-        query = query.eq("user_id", user.id);
-      }
-
+      // Sistema GLOBAL: Todos usuários veem TODOS os prazos e audiências
       const { data, error } = await query;
 
       if (error) {
@@ -86,10 +83,10 @@ const AudienciasProximas = () => {
       const processos = (data || []) as Processo[];
 
       const hoje_ = processos.filter(p => p.prazo === hojeStr);
-      const semana = processos.filter(p => 
+      const semana = processos.filter(p =>
         p.prazo > hojeStr && p.prazo <= fimSemanaStr
       );
-      const mes = processos.filter(p => 
+      const mes = processos.filter(p =>
         p.prazo > fimSemanaStr && p.prazo <= fimMesStr
       );
 
@@ -105,10 +102,10 @@ const AudienciasProximas = () => {
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr + "T12:00:00");
-    return date.toLocaleDateString("pt-BR", { 
-      weekday: "long", 
-      day: "2-digit", 
-      month: "long" 
+    return date.toLocaleDateString("pt-BR", {
+      weekday: "long",
+      day: "2-digit",
+      month: "long"
     });
   };
 
@@ -121,7 +118,7 @@ const AudienciasProximas = () => {
   };
 
   const renderProcessoRow = (processo: Processo) => (
-    <TableRow 
+    <TableRow
       key={processo.id}
       className="cursor-pointer hover:bg-muted/50"
       onClick={() => navigate(`/processo/${processo.id}`)}
@@ -224,21 +221,21 @@ const AudienciasProximas = () => {
           <CardContent className="p-0">
             <Tabs defaultValue="hoje" className="w-full">
               <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0">
-                <TabsTrigger 
-                  value="hoje" 
+                <TabsTrigger
+                  value="hoje"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-red-500 data-[state=active]:bg-transparent"
                 >
                   <Calendar className="w-4 h-4 mr-2 text-red-500" />
                   Hoje ({processosHoje.length})
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="semana"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-amber-500 data-[state=active]:bg-transparent"
                 >
                   <Clock className="w-4 h-4 mr-2 text-amber-500" />
                   Esta Semana ({processosSemana.length})
                 </TabsTrigger>
-                <TabsTrigger 
+                <TabsTrigger
                   value="mes"
                   className="rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent"
                 >

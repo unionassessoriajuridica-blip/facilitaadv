@@ -5,12 +5,12 @@ import { supabase } from '@/integrations/supabase/client.ts';
 import { useToast } from '@/hooks/use-toast.ts';
 import { useAuth } from '@/hooks/useAuth.ts';
 
-export type UserPermission = 
+export type UserPermission =
   | 'READ'
   | 'WRITE'
   | 'ADMIN'
   | 'financeiro'
-  | 'ia_facilita' 
+  | 'ia_facilita'
   | 'facilisign'
   | 'novo_processo'
   | 'google_integration'
@@ -27,7 +27,7 @@ export const usePermissions = () => {
   const { toast } = useToast();
   const { user, loading: authLoading } = useAuth();
 
-  const loadUserPermissions = async () => {
+  const loadUserPermissions = React.useCallback(async () => {
     try {
       if (!user?.id) {
         setPermissions([]);
@@ -49,7 +49,7 @@ export const usePermissions = () => {
         });
       }
 
-      const explicitPermissions = permissionsData?.map(item => 
+      const explicitPermissions = permissionsData?.map(item =>
         item.permission as UserPermission
       ) || [];
 
@@ -63,7 +63,7 @@ export const usePermissions = () => {
       }
 
       const roles = rolesData?.map(item => item.role) || [];
-      
+
       const automaticPermissions: UserPermission[] = [];
       if (roles.includes('master') || roles.includes('admin')) {
         automaticPermissions.push('ver_todos_processos');
@@ -74,7 +74,7 @@ export const usePermissions = () => {
 
       const allPermissions = [...automaticPermissions, ...explicitPermissions];
       const uniquePermissions = Array.from(new Set(allPermissions));
-      
+
       setPermissions(uniquePermissions);
 
     } catch (error) {
@@ -83,7 +83,7 @@ export const usePermissions = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.id, toast]);
 
   useEffect(() => {
     // Só carregar permissões quando a autenticação não estiver loading E usuário existir
@@ -96,11 +96,11 @@ export const usePermissions = () => {
     }
   }, [authLoading, user]);
 
-  const hasPermission = (permission: UserPermission): boolean => {
+  const hasPermission = React.useCallback((permission: UserPermission): boolean => {
     return permissions.includes(permission);
-  };
+  }, [permissions]);
 
-  const requirePermission = (permission: UserPermission, action: string = 'realizar esta ação') => {
+  const requirePermission = React.useCallback((permission: UserPermission, action: string = 'realizar esta ação') => {
     if (!hasPermission(permission)) {
       toast({
         title: 'Acesso negado',
@@ -110,13 +110,13 @@ export const usePermissions = () => {
       return false;
     }
     return true;
-  };
+  }, [hasPermission, toast]);
 
-  return {
+  return React.useMemo(() => ({
     permissions,
     loading,
     hasPermission,
     requirePermission,
     refreshPermissions: loadUserPermissions
-  };
+  }), [permissions, loading, hasPermission, requirePermission, loadUserPermissions]);
 };

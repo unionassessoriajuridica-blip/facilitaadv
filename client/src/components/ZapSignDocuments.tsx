@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -73,15 +74,29 @@ interface AdditionalSigner {
   email: string;
   telefone: string;
   cpf_cnpj: string;
+  qualificacao?: string; // OneClick
+  enviarEmail?: boolean; // OneClick
+  enviarWhatsApp?: boolean; // OneClick
 }
 
 interface Witness {
   nome: string;
   email: string;
   cpf: string;
+  qualificacao?: string; // OneClick - sempre "testemunha"
+  enviarEmail?: boolean; // OneClick
+  enviarWhatsApp?: boolean; // OneClick
+  telefone?: string; // OneClick (para WhatsApp)
 }
 
-const emptyWitness: Witness = { nome: "", email: "", cpf: "" };
+const emptyWitness: Witness = {
+  nome: "",
+  email: "",
+  cpf: "",
+  qualificacao: "testemunha",
+  enviarEmail: false,
+  enviarWhatsApp: false
+};
 
 export function ZapSignDocuments({ processoId, cliente, numeroProcesso, documentos = [] }: ZapSignDocumentsProps) {
   const { toast } = useToast();
@@ -91,6 +106,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
   const [pdfUrl, setPdfUrl] = useState("");
   const [sendEmail, setSendEmail] = useState(false);
   const [sendWhatsapp, setSendWhatsapp] = useState(false);
+  const [ordemAssinatura, setOrdemAssinatura] = useState(false); // OneClick
   const [zapsignDocs, setZapsignDocs] = useState<ZapSignDocRecord[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [selectedViewToken, setSelectedViewToken] = useState<string | null>(null);
@@ -132,16 +148,24 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
   };
 
   const addAdditionalSigner = () => {
-    setAdditionalSigners([...additionalSigners, { nome: "", email: "", telefone: "", cpf_cnpj: "" }]);
+    setAdditionalSigners([...additionalSigners, {
+      nome: "",
+      email: "",
+      telefone: "",
+      cpf_cnpj: "",
+      qualificacao: "parte",
+      enviarEmail: false,
+      enviarWhatsApp: false
+    }]);
   };
 
   const removeAdditionalSigner = (index: number) => {
     setAdditionalSigners(additionalSigners.filter((_, i) => i !== index));
   };
 
-  const updateAdditionalSigner = (index: number, field: keyof AdditionalSigner, value: string) => {
+  const updateAdditionalSigner = (index: number, field: keyof AdditionalSigner, value: string | boolean) => {
     const updated = [...additionalSigners];
-    updated[index][field] = value;
+    (updated[index] as any)[field] = value === "true" ? true : value === "false" ? false : value;
     setAdditionalSigners(updated);
   };
 
@@ -155,9 +179,9 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
     setWitnesses(witnesses.filter((_, i) => i !== index));
   };
 
-  const updateWitness = (index: number, field: keyof Witness, value: string) => {
+  const updateWitness = (index: number, field: keyof Witness, value: string | boolean) => {
     const updated = [...witnesses];
-    updated[index][field] = value;
+    (updated[index] as any)[field] = value === "true" ? true : value === "false" ? false : value;
     setWitnesses(updated);
   };
 
@@ -168,6 +192,7 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
     setSelectedDocument("");
     setSendEmail(false);
     setSendWhatsapp(false);
+    setOrdemAssinatura(false); // OneClick
     setAdditionalSigners([]);
     setWitnesses([]);
   };
@@ -201,10 +226,11 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
         clienteEmail: cliente?.email,
         clienteTelefone: cliente?.telefone,
         clienteCpfCnpj: cliente?.cpf_cnpj,
-        documentName: `${documentName} - ${numeroProcesso}`,
+        documentName: `${numeroProcesso} - ${documentName}`, // Prefixo com nº processo
         pdfUrl,
         sendEmail,
         sendWhatsapp,
+        ordemAssinatura, // OneClick
         additionalSigners: validAdditionalSigners,
         witnesses: validWitnesses,
       });
@@ -345,6 +371,19 @@ export function ZapSignDocuments({ processoId, cliente, numeroProcesso, document
                   <p className="text-xs text-muted-foreground">
                     A URL deve ser pública e acessível. Tamanho máximo: 10MB.
                   </p>
+                </div>
+
+                {/* OneClick: Ordem de Assinatura */}
+                <div className="flex items-center gap-2 p-2 bg-muted/30 rounded-md">
+                  <Switch
+                    id="ordem-assinatura-processo"
+                    checked={ordemAssinatura}
+                    onCheckedChange={setOrdemAssinatura}
+                  />
+                  <Label htmlFor="ordem-assinatura-processo" className="flex flex-col cursor-pointer text-xs">
+                    <span className="font-medium">Ordem de Assinatura Sequencial</span>
+                    <span className="text-muted-foreground">Assinatura na ordem: cliente, signatários, testemunhas</span>
+                  </Label>
                 </div>
 
                 <div className="space-y-4 pt-2">

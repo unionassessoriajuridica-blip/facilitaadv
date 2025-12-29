@@ -20,6 +20,31 @@ export default defineConfig(({ mode }) => {
         "@assets": path.resolve(__dirname, "attached_assets"),
       },
     },
+
+    // ⚡ Otimizações de Performance
+    optimizeDeps: {
+      // Pré-otimizar apenas dependências críticas do cliente
+      include: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        'wouter',
+        '@radix-ui/react-dialog',
+        '@radix-ui/react-dropdown-menu',
+        '@radix-ui/react-select',
+        '@radix-ui/react-toast',
+      ],
+      // Excluir pacotes pesados e server-side da otimização
+      exclude: [
+        '@supabase/supabase-js',
+        'googleapis',
+        'node-cron',
+      ]
+    },
+
+    // Cache persistente para startups mais rápidos
+    cacheDir: 'node_modules/.vite',
+
     define: {
       "import.meta.env.VITE_APP_URL": JSON.stringify(env.VITE_APP_URL),
       "import.meta.env.VITE_GOOGLE_CLIENT_ID": JSON.stringify(

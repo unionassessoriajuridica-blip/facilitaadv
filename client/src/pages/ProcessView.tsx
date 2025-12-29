@@ -30,7 +30,6 @@ import {
   FileSignature,
 } from "lucide-react";
 import { ProcessoTarefas } from "@/components/ProcessoTarefas";
-import { ZapSignDocuments } from "@/components/ZapSignDocuments";
 import { ProcessoArquivos } from "@/components/ProcessoArquivos";
 import { datajudService, DatajudMovimento } from "@/services/datajudService";
 import { useToast } from "@/hooks/use-toast.ts";
@@ -121,24 +120,42 @@ const ProcessView = () => {
         clienteData = processoData.clientes;
       }
 
-      const [financeiroRes, observacoesRes, documentosRes, responsavelRes] = await Promise.all([
+      // Buscas paralelas via API (mantendo para outros recursos)
+      const [financeiroRes, observacoesRes, responsavelRes] = await Promise.all([
         fetch(`/api/processos/${id}/financeiro`, { headers }),
         fetch(`/api/processos/${id}/observacoes`, { headers }),
-        fetch(`/api/processos/${id}/documentos`, { headers }),
         fetch(`/api/processos/${id}/responsavel`, { headers })
       ]);
 
-      const [financeiroData, observacoesData, documentosData, responsavelData] = await Promise.all([
+      // Busca de documentos HÍBRIDA (Legado + Novo) via Supabase Client direto
+      // Isso resolve problemas de proxy/RLS e garante retrocompatibilidade
+      const [docsLegadoRes, docsDriveRes] = await Promise.all([
+        supabase.from("documentos_processo").select("*").eq("processo_id", id),
+        supabase.from("processo_documentos_drive").select("*").eq("processo_id", id)
+      ]);
+
+      const [financeiroData, observacoesData, responsavelData] = await Promise.all([
         financeiroRes.ok ? financeiroRes.json() : [],
         observacoesRes.ok ? observacoesRes.json() : [],
-        documentosRes.ok ? documentosRes.json() : [],
         responsavelRes.ok ? responsavelRes.json() : null
       ]);
+
+      // Combinar e normalizar documentos
+      const docsLegado = docsLegadoRes.data || [];
+      const docsDrive = docsDriveRes.data || [];
+
+      const documentosCombinados = [
+        ...docsLegado,
+        ...docsDrive.map((doc: any) => ({
+          ...doc,
+          url_arquivo: doc.google_drive_link, // Normaliza field para compatibilidade
+        }))
+      ];
 
       setCliente(clienteData);
       setFinanceiro(financeiroData);
       setObservacoes(observacoesData);
-      setDocumentos(documentosData);
+      setDocumentos(documentosCombinados);
       setResponsavel(responsavelData);
 
     } catch (error) {
@@ -376,7 +393,7 @@ const ProcessView = () => {
           <CardContent className="p-3 sm:p-6">
             <Tabs defaultValue="dados-pessoais" className="w-full">
               <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
-                <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-7 gap-1">
+                <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-6 gap-1">
                   <TabsTrigger
                     value="dados-pessoais"
                     className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
@@ -416,15 +433,6 @@ const ProcessView = () => {
                     <FileText className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Arquivos ({documentos.length})</span>
                     <span className="sm:hidden">Arq.</span>
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="assinatura"
-                    className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
-                    data-testid="tab-assinatura"
-                  >
-                    <FileSignature className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Assinatura</span>
-                    <span className="sm:hidden">Assinar</span>
                   </TabsTrigger>
                   <TabsTrigger
                     value="info-processo"
@@ -764,14 +772,7 @@ const ProcessView = () => {
                 />
               </TabsContent>
 
-              <TabsContent value="assinatura" className="mt-6">
-                <ZapSignDocuments
-                  processoId={id!}
-                  cliente={cliente}
-                  numeroProcesso={processo.numero_processo}
-                  documentos={documentos}
-                />
-              </TabsContent>
+
 
               <TabsContent value="info-processo" className="mt-6">
                 <div className="space-y-6">

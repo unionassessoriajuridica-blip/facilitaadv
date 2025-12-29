@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth.ts";
 import { Button } from "@/components/ui/button.tsx";
 import { useNavigate } from "react-router-dom";
 import { FrontendMenu } from "./Menu.tsx";
+import { GoogleStatusIndicator } from "./GoogleStatusIndicator.tsx";
 
 const Header = () => {
   const { user, signOut, isAuthenticated } = useAuth();
@@ -33,6 +34,8 @@ const Header = () => {
             <Lock className="w-5 h-5 text-warning mr-2" />
             <span className="text-sm font-medium">SSL 256-bit Ativo</span>
           </div>
+
+          <GoogleStatusIndicator />
 
           {isAuthenticated ? (
             <div className="flex items-center gap-2">

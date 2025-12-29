@@ -12,6 +12,14 @@ import { Badge } from "@/components/ui/badge.tsx";
 import { Input } from "@/components/ui/input.tsx";
 import { Label } from "@/components/ui/label.tsx";
 import { Switch } from "@/components/ui/switch.tsx";
+import { Checkbox } from "@/components/ui/checkbox.tsx";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select.tsx";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +54,7 @@ import {
   Mail,
   MessageCircle,
   ExternalLink,
+  FolderPlus,
 } from "lucide-react";
 import {
   useFaciliSign,
@@ -67,11 +76,23 @@ const FaciliSign = () => {
   const [usePdfUrl, setUsePdfUrl] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
   const [sendWhatsapp, setSendWhatsapp] = useState(false);
+  const [ordemAssinatura, setOrdemAssinatura] = useState(false); // OneClick: signature order
   const [signatarios, setSignatarios] = useState<Signatario[]>([
-    { nome: "", email: "", telefone: "", cpf: "" },
+    {
+      nome: "",
+      email: "",
+      telefone: "",
+      cpf: "",
+      qualificacao: "parte",
+      enviarEmail: false, // Default: sistema envia email customizado
+      enviarWhatsApp: false
+    },
   ]);
   const [showUploadDialog, setShowUploadDialog] = useState(false);
   const [refreshingDoc, setRefreshingDoc] = useState<string | null>(null);
+  const [selectedSigners, setSelectedSigners] = useState<Record<string, string[]>>({});
+  const [resendingDoc, setResendingDoc] = useState<string | null>(null);
+
 
   const {
     uploadAndCreateDocument,
@@ -106,7 +127,8 @@ const FaciliSign = () => {
     };
 
     checkAuthAndLoadData();
-  }, [navigate, loadDocuments]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigate, currentPage]); // Removido loadDocuments para evitar loop
 
   const getStats = () => {
     const assinados = documents.filter(
@@ -165,7 +187,15 @@ const FaciliSign = () => {
   };
 
   const addSignatario = () => {
-    setSignatarios([...signatarios, { nome: "", email: "", telefone: "", cpf: "" }]);
+    setSignatarios([...signatarios, {
+      nome: "",
+      email: "",
+      telefone: "",
+      cpf: "",
+      qualificacao: "parte",
+      enviarEmail: false,
+      enviarWhatsApp: false
+    }]);
   };
 
   const removeSignatario = (index: number) => {
@@ -177,10 +207,10 @@ const FaciliSign = () => {
   const updateSignatario = (
     index: number,
     field: keyof Signatario,
-    value: string
+    value: string | boolean
   ) => {
     const updated = [...signatarios];
-    updated[index][field] = value;
+    (updated[index] as any)[field] = value === "true" ? true : value === "false" ? false : value;
     setSignatarios(updated);
   };
 
@@ -192,7 +222,16 @@ const FaciliSign = () => {
     setUsePdfUrl(false);
     setSendEmail(true);
     setSendWhatsapp(false);
-    setSignatarios([{ nome: "", email: "", telefone: "", cpf: "" }]);
+    setOrdemAssinatura(false);
+    setSignatarios([{
+      nome: "",
+      email: "",
+      telefone: "",
+      cpf: "",
+      qualificacao: "parte",
+      enviarEmail: false,
+      enviarWhatsApp: false
+    }]);
   };
 
   const handleSubmit = async () => {
@@ -238,8 +277,9 @@ const FaciliSign = () => {
 
     try {
       const options = {
-        sendEmail,
-        sendWhatsapp,
+        sendEmail: true, // Sempre true - ZapSign envia emails automáticos
+        sendWhatsapp: false, // Sempre false
+        ordemAssinatura: false, // Sempre false - sem ordem sequencial
       };
 
       if (usePdfUrl) {
@@ -308,16 +348,16 @@ const FaciliSign = () => {
     try {
       // Buscar dados atualizados do ZapSign para obter URLs validas
       const response = await fetch(`/api/zapsign/documents/${doc.zapsign_token}`);
-      
+
       if (!response.ok) {
         throw new Error("Falha ao buscar documento");
       }
-      
+
       const zapsignDoc = await response.json();
-      
+
       // Usar URL assinada se disponivel, senao usar original
       const viewUrl = zapsignDoc.signed_file || zapsignDoc.original_file;
-      
+
       if (viewUrl) {
         window.open(viewUrl, "_blank");
       } else {
@@ -349,14 +389,14 @@ const FaciliSign = () => {
     try {
       // Buscar dados atualizados do ZapSign para obter URLs validas
       const response = await fetch(`/api/zapsign/documents/${doc.zapsign_token}`);
-      
+
       if (!response.ok) {
         throw new Error("Falha ao buscar documento");
       }
-      
+
       const zapsignDoc = await response.json();
       const url = zapsignDoc.signed_file || zapsignDoc.original_file;
-      
+
       if (url) {
         const link = document.createElement("a");
         link.href = url;
@@ -377,6 +417,493 @@ const FaciliSign = () => {
         title: "Erro",
         description: "Nao foi possivel baixar o documento. Tente novamente.",
         variant: "destructive",
+      });
+    }
+  };
+  // Adicionar estas funções após linha 419 (após handleDownloadDocument)
+
+  const isFullySigned = (doc: DocumentoFaciliSign) => {
+    return doc.status === "signed" && doc.signed_file_url;
+  };
+
+  const handleLinkToProcess = async (doc: DocumentoFaciliSign) => {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast({ variant: "destructive", title: "Erro", description: "Usuário não autenticado" });
+        return;
+      }
+
+      const { data: processos, error: processosError } = await supabase
+        .from("processos")
+        .select("id, numero_processo, clientes(nome)")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (processosError || !processos || processos.length === 0) {
+        toast({ variant: "destructive", title: "Erro", description: "Nenhum processo encontrado" });
+        return;
+      }
+
+      const options = processos.map((p) => ({
+        value: p.id,
+        label: `${p.numero_processo} - ${p.clientes?.nome || "Sem cliente"}`,
+      }));
+
+      const { value: processoId } = await Swal.fire({
+        title: "Vincular ao Processo",
+        html: `
+          <div style="text-align: left; padding: 10px;">
+            <div style="position: relative; margin-bottom: 16px;">
+              <svg style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: #6b7280;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+              </svg>
+              <input 
+                type="text" 
+                id="processo-search" 
+                class="swal2-input" 
+                placeholder="Digite o número do processo ou nome do cliente..." 
+                style="
+                  width: 100%; 
+                  padding-left: 40px;
+                  border: 2px solid #e5e7eb;
+                  border-radius: 8px;
+                  font-size: 14px;
+                  transition: all 0.2s;
+                "
+                onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.1)';"
+                onblur="this.style.borderColor='#e5e7eb'; this.style.boxShadow='none';"
+              />
+            </div>
+            
+            <div style="
+              background: #f9fafb; 
+              border-radius: 8px; 
+              border: 2px solid #e5e7eb;
+              overflow: hidden;
+            ">
+              <select 
+                id="processo-select" 
+                class="swal2-input" 
+                size="8"
+                style="
+                  width: 100%; 
+                  height: 280px;
+                  border: none;
+                  background: white;
+                  font-size: 14px;
+                  padding: 8px;
+                  margin: 0;
+                "
+              >
+                ${options.map(opt => `<option value="${opt.value}">📁 ${opt.label}</option>`).join("")}
+              </select>
+            </div>
+            
+            <p style="
+              margin-top: 12px; 
+              font-size: 12px; 
+              color: #6b7280;
+              display: flex;
+              align-items: center;
+              gap: 6px;
+            ">
+              <svg style="width: 14px; height: 14px;" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+              </svg>
+              Dica: Clique duas vezes para selecionar rapidamente
+            </p>
+          </div>
+        `,
+        didOpen: () => {
+          const searchInput = document.getElementById("processo-search") as HTMLInputElement;
+          const select = document.getElementById("processo-select") as HTMLSelectElement;
+          const allOptions = Array.from(select.options);
+
+          searchInput.focus();
+
+          const styleOptions = () => {
+            Array.from(select.options).forEach((opt, index) => {
+              opt.style.padding = "12px 16px";
+              opt.style.margin = "4px 8px";
+              opt.style.borderRadius = "6px";
+              opt.style.backgroundColor = index % 2 === 0 ? "#f9fafb" : "white";
+            });
+          };
+          styleOptions();
+
+          select.addEventListener("mouseover", (e) => {
+            const target = e.target as HTMLOptionElement;
+            if (target.tagName === "OPTION" && !target.disabled) {
+              target.style.backgroundColor = "#eef2ff";
+              target.style.color = "#4f46e5";
+              target.style.fontWeight = "500";
+            }
+          });
+
+          select.addEventListener("mouseout", (e) => {
+            const target = e.target as HTMLOptionElement;
+            if (target.tagName === "OPTION" && !target.disabled) {
+              const index = Array.from(select.options).indexOf(target);
+              target.style.backgroundColor = index % 2 === 0 ? "#f9fafb" : "white";
+              target.style.color = "#111827";
+              target.style.fontWeight = "normal";
+            }
+          });
+
+          searchInput.addEventListener("input", (e) => {
+            const searchTerm = (e.target as HTMLInputElement).value.toLowerCase();
+            select.innerHTML = "";
+
+            const filtered = allOptions.filter(opt =>
+              opt.text.toLowerCase().includes(searchTerm)
+            );
+
+            if (filtered.length > 0) {
+              filtered.forEach(opt => select.add(opt.cloneNode(true) as HTMLOptionElement));
+              styleOptions();
+            } else {
+              const noResult = document.createElement("option");
+              noResult.text = "🔍 Nenhum processo encontrado";
+              noResult.disabled = true;
+              noResult.style.padding = "24px";
+              noResult.style.textAlign = "center";
+              noResult.style.color = "#9ca3af";
+              select.add(noResult);
+            }
+          });
+
+          select.addEventListener("dblclick", () => {
+            if (select.value) {
+              Swal.clickConfirm();
+            }
+          });
+        },
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: "✓ Vincular",
+        cancelButtonText: "✕ Cancelar",
+        confirmButtonColor: "#6366f1",
+        cancelButtonColor: "#6b7280",
+        preConfirm: () => {
+          const select = document.getElementById("processo-select") as HTMLSelectElement;
+          if (!select.value) {
+            Swal.showValidationMessage("Por favor, selecione um processo");
+            return null;
+          }
+          return select.value;
+        },
+      });
+
+      if (!processoId) return;
+
+      const response = await fetch(`/api/zapsign/documents/${doc.zapsign_token}/link-to-process`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({ processoId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao vincular documento");
+      }
+
+      const result = await response.json();
+      toast({ title: "Sucesso!", description: result.message || "Documento vinculado ao processo" });
+
+      // Atualizar documento local para mostrar processo vinculado
+      setDocuments(prev => prev.map(d => {
+        if (d.id === doc.id) {
+          return {
+            ...d,
+            linked_processes: [
+              ...(d.linked_processes || []),
+              { id: result.processoId, numero: result.numeroProcesso }
+            ]
+          };
+        }
+        return d;
+      }));
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Erro", description: error.message || "Erro ao vincular documento ao processo" });
+    }
+  };
+
+  // Helper: Badge de status do signatário individual
+  const getSignerStatusBadge = (status: string, signedAt?: string | null, parentDocStatus?: string) => {
+    // Se documento pai está assinado, assumir que signatário também assinou
+    // (dados podem estar desatualizados no banco)
+    if (parentDocStatus === 'signed') {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge className="bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Assinado
+          </Badge>
+          {signedAt && (
+            <span className="text-xs text-muted-foreground">
+              {new Date(signedAt).toLocaleString('pt-BR')}
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    // Caso contrário, usar status individual
+    switch (status) {
+      case 'signed':
+        return (
+          <div className="flex items-center gap-2">
+            <Badge className="bg-green-100 text-green-800">
+              <CheckCircle className="w-3 h-3 mr-1" />
+              Assinado
+            </Badge>
+            {signedAt && (
+              <span className="text-xs text-muted-foreground">
+                {new Date(signedAt).toLocaleString('pt-BR')}
+              </span>
+            )}
+          </div>
+        );
+      case 'new':
+      case 'pending':
+        return (
+          <Badge className="bg-yellow-100 text-yellow-800">
+            <Clock className="w-3 h-3 mr-1" />
+            Pendente
+          </Badge>
+        );
+      case 'link-opened':
+        return (
+          <Badge className="bg-blue-100 text-blue-800">
+            <Eye className="w-3 h-3 mr-1" />
+            Link Aberto
+          </Badge>
+        );
+      case 'refused':
+        return (
+          <Badge className="bg-red-100 text-red-800">
+            <XCircle className="w-3 h-3 mr-1" />
+            Recusado
+          </Badge>
+        );
+      case 'link_expired':
+        return (
+          <Badge variant="secondary">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            Expirado
+          </Badge>
+        );
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  // Helper: Badge geral do documento
+  const getOverallStatusBadge = (doc: DocumentoFaciliSign) => {
+    // SEMPRE priorizar o status global do documento
+    // (o array signatarios pode estar desatualizado no banco)
+
+    if (doc.status === 'signed') {
+      return (
+        <Badge className="bg-green-600 text-white">
+          <CheckCircle className="w-3 h-3 mr-1" />
+          Assinado
+        </Badge>
+      );
+    }
+
+    if (doc.status === 'refused') {
+      return (
+        <Badge variant="destructive">
+          <XCircle className="w-3 h-3 mr-1" />
+          Recusado
+        </Badge>
+      );
+    }
+
+    if (doc.status === 'expired') {
+      return (
+        <Badge variant="secondary">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          Expirado
+        </Badge>
+      );
+    }
+
+    // Se status é 'pending' e tem signatários, verificar detalhes
+    if (doc.signatarios && doc.signatarios.length > 0) {
+      const allSigned = doc.signatarios.every((s: any) => s.status === 'signed');
+      const someSigned = doc.signatarios.some((s: any) => s.status === 'signed');
+      const anyRefused = doc.signatarios.some((s: any) => s.status === 'refused');
+
+      if (allSigned) {
+        return (
+          <Badge className="bg-green-600 text-white">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Todos Assinaram
+          </Badge>
+        );
+      }
+      if (anyRefused) {
+        return (
+          <Badge variant="destructive">
+            <XCircle className="w-3 h-3 mr-1" />
+            Assinatura Recusada
+          </Badge>
+        );
+      }
+      if (someSigned) {
+        return (
+          <Badge className="bg-blue-500 text-white">
+            <Users className="w-3 h-3 mr-1" />
+            Parcialmente Assinado
+          </Badge>
+        );
+      }
+    }
+
+    // Default: Aguardando
+    return (
+      <Badge className="bg-yellow-500 text-white">
+        <Clock className="w-3 h-3 mr-1" />
+        Aguardando Assinaturas
+      </Badge>
+    );
+  };
+
+  // Helper: Tem signatários pendentes?
+  const hasPendingSigners = (doc: DocumentoFaciliSign) => {
+    // Se documento já está assinado globalmente, não há pendentes
+    if (doc.status === 'signed') return false;
+
+    // Se não tem signatários, verificar status do documento
+    if (!doc.signatarios || doc.signatarios.length === 0) {
+      return doc.status === 'pending';
+    }
+
+    // Se tem signatários, verificar se algum está pendente
+    // Status válidos: new, pending, link-opened
+    return doc.signatarios.some((s: any) =>
+      s.status === 'new' || s.status === 'pending' || s.status === 'link-opened'
+    );
+  };
+  // Adicionar APÓS a função hasPendingSigners() (linha ~712) e ANTES do return (
+
+  // Handler: Toggle seleção de signatário
+  const toggleSignerSelection = (docId: string, email: string, checked: boolean) => {
+    setSelectedSigners(prev => {
+      const current = prev[docId] || [];
+      if (checked) {
+        return { ...prev, [docId]: [...current, email] };
+      } else {
+        return { ...prev, [docId]: current.filter(e => e !== email) };
+      }
+    });
+  };
+
+  // Handler: Reenviar emails para signatários selecionados
+  const handleResendEmails = async (doc: DocumentoFaciliSign) => {
+    const emails = selectedSigners[doc.id];
+
+    if (!emails || emails.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Selecione ao menos um signatário",
+      });
+      return;
+    }
+
+    setResendingDoc(doc.id);
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Usuário não autenticado",
+        });
+        return;
+      }
+
+      const response = await fetch(`/api/zapsign/documents/${doc.zapsign_token}/resend-emails`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${sessionData.session.access_token}`,
+        },
+        body: JSON.stringify({ signerEmails: emails }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Erro ao reenviar emails");
+      }
+
+      const result = await response.json();
+
+      toast({
+        title: "Emails Reenviados!",
+        description: `${result.emailsSent} email(s) enviado(s) com sucesso`,
+      });
+
+      // Limpar seleção
+      setSelectedSigners(prev => ({ ...prev, [doc.id]: [] }));
+
+    } catch (error: any) {
+      console.error("Error resending emails:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Erro ao reenviar emails",
+      });
+    } finally {
+      setResendingDoc(null);
+    }
+  };
+
+  // Handler: Deletar Documento
+  const handleDeleteDocument = async (doc: DocumentoFaciliSign) => {
+    const result = await Swal.fire({
+      title: "Deletar Documento?",
+      html: `
+        <p>Tem certeza que deseja deletar:</p>
+        <p class="font-semibold text-lg mt-2">${doc.nome}</p>
+        <p class="text-sm text-gray-500 mt-2">Esta ação não pode ser desfeita.</p>
+      `,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Sim, deletar!",
+      cancelButtonText: "Cancelar",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      const success = await deleteDocument(doc.zapsign_token);
+
+      if (success) {
+        // Remover documento da lista local (sem depender de cache)
+        setDocuments(prev => prev.filter(d => d.id !== doc.id));
+
+        toast({
+          title: "Documento Deletado",
+          description: "O documento foi removido com sucesso"
+        });
+      }
+    } catch (error: any) {
+      console.error("Error deleting document:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao Deletar",
+        description: error.message || "Falha ao deletar documento"
       });
     }
   };
@@ -543,8 +1070,38 @@ const FaciliSign = () => {
                           />
                         </div>
                       </div>
+
+                      {/* OneClick: Qualificação */}
+                      <div>
+                        <Label>Qualificação</Label>
+                        <Select
+                          value={sig.qualificacao || "parte"}
+                          onValueChange={(value) =>
+                            updateSignatario(index, "qualificacao", value)
+                          }
+                        >
+                          <SelectTrigger data-testid={`select-signer-qualification-${index}`}>
+                            <SelectValue placeholder="Selecione..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="parte">Parte</SelectItem>
+                            <SelectItem value="testemunha">Testemunha</SelectItem>
+                            <SelectItem value="advogado">Advogado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                     </div>
                   ))}
+                </div>
+
+
+                {/* Info: Emails automáticos sempre ativos */}
+                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <Mail className="h-4 w-4 text-blue-600" />
+                  <p className="text-sm text-blue-800">
+                    <strong>Email automático:</strong> ZapSign enviará notificações por email para todos os signatários
+                  </p>
                 </div>
 
                 <div className="flex items-center gap-6">
@@ -682,100 +1239,161 @@ const FaciliSign = () => {
               </div>
             ) : (
               <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Documento</TableHead>
-                      <TableHead>Origem</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead className="text-right">Acoes</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {documents.map((doc) => {
-                      const StatusIcon = getStatusIcon(doc.status);
-                      return (
-                        <TableRow key={doc.id} data-testid={`row-document-${doc.id}`}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <FileSignature className="w-4 h-4 text-muted-foreground" />
-                              <span className="font-medium">{doc.nome}</span>
+                {/* Cards expandidos com status detalhado */}
+                <div className="space-y-4">
+                  {documents.map((doc) => (
+                    <Card key={doc.id} className="overflow-hidden">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <FileSignature className="w-5 h-5 text-indigo-600" />
+                            <div>
+                              <CardTitle className="text-base">{doc.nome}</CardTitle>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {new Date(doc.created_at).toLocaleString('pt-BR')}
+                              </p>
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            {doc.source === "processo" ? (
-                              <div className="flex flex-col">
-                                <Badge variant="outline" className="w-fit text-xs">Processo</Badge>
-                                {doc.numero_processo && (
-                                  <span className="text-xs text-muted-foreground mt-1">
-                                    {doc.numero_processo.length > 20 
-                                      ? doc.numero_processo.slice(0, 20) + "..." 
-                                      : doc.numero_processo}
-                                  </span>
-                                )}
+                          </div>
+                          {getOverallStatusBadge(doc)}
+                        </div>
+                      </CardHeader>
+
+                      {doc.signatarios && doc.signatarios.length > 0 && (
+                        <CardContent className="pt-0">
+                          <div className="space-y-3">
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Signatários ({doc.signatarios.length}):
+                            </p>
+
+                            {doc.signatarios.map((signer: any, idx: number) => (
+                              <div
+                                key={idx}
+                                className="flex items-start justify-between p-3 rounded-lg bg-muted/30 border"
+                              >
+                                <div className="flex items-start gap-3 flex-1">
+                                  {/* Checkbox apenas para documentos pendentes com signatários pendentes */}
+                                  {doc.status !== 'signed' && (signer.status === 'new' || signer.status === 'pending' || signer.status === 'link-opened') && (
+                                    <Checkbox
+                                      id={`signer-${doc.id}-${idx}`}
+                                      checked={selectedSigners[doc.id]?.includes(signer.email) || false}
+                                      onCheckedChange={(checked) => {
+                                        toggleSignerSelection(doc.id, signer.email, checked as boolean);
+                                      }}
+                                      className="mt-1"
+                                    />
+                                  )}
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                      <Users className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                      <p className="text-sm font-medium truncate">{signer.name}</p>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                      {signer.email}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="ml-2 flex-shrink-0">
+                                  {getSignerStatusBadge(signer.status, signer.signed_at, doc.status)}
+                                </div>
                               </div>
-                            ) : (
-                              <Badge variant="secondary" className="w-fit text-xs">FaciliSign</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={`${getStatusBadgeColor(doc.status)} flex items-center gap-1 w-fit`}>
-                              <StatusIcon className="w-3 h-3" />
-                              {getStatusLabel(doc.status)}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {new Date(doc.created_at).toLocaleDateString("pt-BR")}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleRefreshStatus(doc.zapsign_token)}
-                                disabled={refreshingDoc === doc.zapsign_token}
-                                title="Atualizar status"
-                                data-testid={`button-refresh-${doc.id}`}
-                              >
-                                <RefreshCw className={`w-4 h-4 ${refreshingDoc === doc.zapsign_token ? "animate-spin" : ""}`} />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleViewDocument(doc)}
-                                title="Visualizar"
-                                data-testid={`button-view-${doc.id}`}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {doc.status === "signed" && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleDownloadDocument(doc)}
-                                  title="Download"
-                                  data-testid={`button-download-${doc.id}`}
-                                >
-                                  <Download className="w-4 h-4" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDelete(doc)}
-                                title="Excluir"
-                                data-testid={`button-delete-${doc.id}`}
-                              >
-                                <Trash2 className="w-4 h-4 text-destructive" />
-                              </Button>
+                            ))}
+                          </div>
+
+                          {/* Processos Vinculados */}
+                          {doc.linked_processes && doc.linked_processes.length > 0 && (
+                            <div className="mt-4 pt-4 border-t">
+                              <p className="text-sm font-medium text-muted-foreground mb-2">
+                                Vinculado aos Processos:
+                              </p>
+                              <div className="flex flex-wrap gap-2">
+                                {doc.linked_processes?.map((processo, idx) => (
+                                  <Badge
+                                    key={idx}
+                                    variant="outline"
+                                    className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200"
+                                  >
+                                    <FolderPlus className="w-3 h-3 mr-1" />
+                                    {processo.numero}
+                                  </Badge>
+                                ))}
+                              </div>
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
+                          )}
+
+                          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRefreshStatus(doc.zapsign_token)}
+                              disabled={refreshingDoc === doc.zapsign_token}
+                              data-testid={`button-refresh-${doc.id}`}
+                            >
+                              <RefreshCw className={`w-4 h-4 mr-2 ${refreshingDoc === doc.zapsign_token ? 'animate-spin' : ''}`} />
+                              Atualizar
+                            </Button>
+
+                            {hasPendingSigners(doc) && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleResendEmails(doc)}
+                                disabled={!selectedSigners[doc.id] || selectedSigners[doc.id].length === 0 || resendingDoc === doc.id}
+                              >
+                                <Mail className="w-4 h-4 mr-2" />
+                                {resendingDoc === doc.id
+                                  ? 'Enviando...'
+                                  : `Reenviar${selectedSigners[doc.id]?.length ? ` (${selectedSigners[doc.id].length})` : ''}`
+                                }
+                              </Button>
+                            )}
+
+                            {isFullySigned(doc) && (
+                              <Button
+                                size="sm"
+                                onClick={() => handleLinkToProcess(doc)}
+                                className="bg-indigo-600 hover:bg-indigo-700"
+                                data-testid={`button-link-${doc.id}`}
+                              >
+                                <FolderPlus className="w-4 h-4 mr-2" />
+                                Vincular
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleViewDocument(doc)}
+                              data-testid={`button-view-${doc.id}`}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+
+                            {doc.status === "signed" && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleDownloadDocument(doc)}
+                                data-testid={`button-download-${doc.id}`}
+                              >
+                                <Download className="w-4 h-4" />
+                              </Button>
+                            )}
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteDocument(doc)}
+                              data-testid={`button-delete-${doc.id}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))}
+                </div>
 
                 {totalPages > 1 && (
                   <div className="flex items-center justify-center gap-2 mt-4">

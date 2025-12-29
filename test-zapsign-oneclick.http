@@ -1,0 +1,228 @@
+### ====================================================================
+### ZapSign OneClick API - Testes
+### ====================================================================
+### Use com extensão REST Client do VS Code ou Thunder Client
+### Substitua {{token}} pelo seu Bearer token de autenticação
+### ====================================================================
+
+@baseUrl = http://localhost:5000
+@token = SEU_TOKEN_AQUI
+
+### ====================================================================
+### TESTE 1: OneClick com Email Automático (ZapSign envia)
+### ====================================================================
+POST {{baseUrl}}/api/zapsign/documents
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "useOneClick": true,
+  "name": "Teste OneClick - Email Auto",
+  "url_pdf": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  "signers": [
+    {
+      "name": "João da Silva",
+      "email": "joao.silva@example.com",
+      "send_automatic_email": true,
+      "qualification": "parte"
+    },
+    {
+      "name": "Maria Santos",
+      "email": "maria.santos@example.com",
+      "send_automatic_email": true,
+      "qualification": "testemunha"
+    }
+  ]
+}
+
+### ====================================================================
+### TESTE 2: OneClick com WhatsApp Automático 
+### ATENÇÃO: Custa R$ 0,50 por envio!
+### ====================================================================
+POST {{baseUrl}}/api/zapsign/documents
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "useOneClick": true,
+  "name": "Teste OneClick - WhatsApp Auto",
+  "url_pdf": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  "signers": [
+    {
+      "name": "Carlos Almeida",
+      "email": "carlos@example.com",
+      "phone_country": "+55",
+      "phone_number": "11987654321",
+      "send_automatic_whatsapp": true,
+      "qualification": "advogado"
+    }
+  ]
+}
+
+### ====================================================================
+### TESTE 3: OneClick com Ordem de Assinatura Sequencial
+### ====================================================================
+POST {{baseUrl}}/api/zapsign/documents
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "useOneClick": true,
+  "name": "Teste OneClick - Ordem Sequencial",
+  "url_pdf": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  "signature_order_active": true,
+  "signers": [
+    {
+      "name": "Primeiro Signatário",
+      "email": "primeiro@example.com",
+      "order_group": 1,
+      "qualification": "parte"
+    },
+    {
+      "name": "Segundo Signatário",
+      "email": "segundo@example.com",
+      "order_group": 2,
+      "qualification": "testemunha"
+    }
+  ]
+}
+
+### ====================================================================
+### TESTE 4: OneClick Manual (sem auto-send) - Sistema envia email customizado
+### ====================================================================
+POST {{baseUrl}}/api/zapsign/documents
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "useOneClick": true,
+  "name": "Teste OneClick - Email Customizado",
+  "url_pdf": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  "notifyEmail": true,
+  "clientName": "Cliente Teste",
+  "signers": [
+    {
+      "name": "Destinatário Manual",
+      "email": "manual@example.com",
+      "send_automatic_email": false,
+      "qualification": "parte"
+    }
+  ]
+}
+
+### ====================================================================
+### TESTE 5: OneClick com BASE64 (upload direto)
+### NOTA: Substitua BASE64_CONTENT pelo PDF convertido em base64
+### ====================================================================
+POST {{baseUrl}}/api/zapsign/documents
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "useOneClick": true,
+  "name": "Teste OneClick - Upload Base64",
+  "base64_pdf": "BASE64_CONTENT_AQUI",
+  "signers": [
+    {
+      "name": "Teste Upload",
+      "email": "upload@example.com",
+      "send_automatic_email": true
+    }
+  ]
+}
+
+### ====================================================================
+### TESTE 6: API Padrão (backward compatibility - useOneClick: false)
+### ====================================================================
+POST {{baseUrl}}/api/zapsign/documents
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "useOneClick": false,
+  "name": "Teste API Padrão",
+  "url_pdf": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  "signers": [
+    {
+      "name": "Teste Padrão",
+      "email": "padrao@example.com",
+      "auth_mode": "assinaturaTela",
+      "require_cpf": true
+    }
+  ]
+}
+
+### ====================================================================
+### TESTE 7: Obter Documento (verificar resposta OneClick)
+### Substitua {TOKEN_DO_DOCUMENTO} pelo token retornado na criação
+### ====================================================================
+GET {{baseUrl}}/api/zapsign/documents/{TOKEN_DO_DOCUMENTO}
+Authorization: Bearer {{token}}
+
+### ====================================================================
+### TESTE 8: OneClick COMPLETO - Todas as opções
+### ====================================================================
+POST {{baseUrl}}/api/zapsign/documents
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "useOneClick": true,
+  "name": "Contrato Teste - Todas Opções",
+  "url_pdf": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+  "require_signature": true,
+  "lang": "pt-br",
+  "brand_name": "FACILITA ADV",
+  "external_id": "processo-123-teste",
+  "folder_path": "/facilita-adv/testes/",
+  "date_limit_to_sign": "2025-12-31T23:59:59Z",
+  "signature_order_active": true,
+  "observers": ["observador@example.com"],
+  "reminder_every_n_days": 3,
+  "allow_refuse_signature": true,
+  "signers": [
+    {
+      "name": "João da Silva",
+      "email": "joao.silva@example.com",
+      "phone_country": "+55",
+      "phone_number": "11987654321",
+      "send_automatic_email": true,
+      "qualification": "parte",
+      "order_group": 1,
+      "custom_message": "Olá João,\nPor favor, assine este contrato.\nAbraços,\nEquipe FACILITA ADV"
+    },
+    {
+      "name": "Maria Santos",
+      "email": "maria.santos@example.com",
+      "send_automatic_email": true,
+      "qualification": "testemunha",
+      "order_group": 2,
+      "redirect_link": "https://facilita.adv.br/obrigado"
+    }
+  ]
+}
+
+### ====================================================================
+### VERIFICAÇÃO ESPERADA:
+### ====================================================================
+### ✅ Status 200 OK
+### ✅ Response contém: token, open_id, status, signers[].sign_url
+### ✅ sign_url formato: https://app.zapsign.com.br/verificar/oneclick/{token}
+### ✅ Se send_automatic_email: true, ZapSign envia email (não nosso sistema)
+### ✅ Se send_automatic_email: false, nosso sistema envia email customizado
+### ✅ Console log: "[ZapSign] Skipping custom emails - ZapSign will send..."
+###     (quando send_automatic_email: true)
+### ====================================================================
+
+### ====================================================================
+### COMO USAR:
+### ====================================================================
+### 1. Instale extensão "REST Client" no VS Code
+### 2. Obtenha token de autenticação:
+###    - Login no sistema
+###    - Inspecionar network
+###    - Copiar Bearer token do header Authorization
+### 3. Substitua {{token}} acima
+### 4. Clique em "Send Request" acima de cada teste
+### 5. Verifique respostas no painel direito
+### ====================================================================

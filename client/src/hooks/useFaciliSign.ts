@@ -7,6 +7,9 @@ export interface Signatario {
   email: string;
   telefone?: string;
   cpf?: string;
+  qualificacao?: string; // "parte", "testemunha", "advogado"
+  enviarEmail?: boolean; // ZapSign auto-send email
+  enviarWhatsApp?: boolean; // ZapSign auto-send WhatsApp (R$ 0,50)
 }
 
 export interface DocumentoFaciliSign {
@@ -23,6 +26,7 @@ export interface DocumentoFaciliSign {
   source?: "facilisign" | "processo";
   processo_id?: string | null;
   numero_processo?: string | null;
+  linked_processes?: Array<{ id: string; numero: string }>; // Processos aos quais este doc foi vinculado
 }
 
 interface ZapSignDocResponse {
@@ -55,6 +59,7 @@ export const useFaciliSign = () => {
       sendEmail?: boolean;
       sendWhatsapp?: boolean;
       dateLimitToSign?: string;
+      ordemAssinatura?: boolean; // OneClick: signature order
     }
   ): Promise<ZapSignDocResponse> => {
     setUploading(true);
@@ -71,16 +76,17 @@ export const useFaciliSign = () => {
 
       const base64Pdf = await base64Promise;
 
-      const signers = signatarios.map((sig) => ({
+      const signers = signatarios.map((sig, index) => ({
         name: sig.nome,
         email: sig.email,
-        phone_country: "55",
-        phone_number: sig.telefone?.replace(/\D/g, "").slice(-11) || "",
-        cpf: sig.cpf?.replace(/\D/g, "") || "",
-        auth_mode: "assinaturaTela",
-        send_automatic_email: options?.sendEmail ?? true,
-        send_automatic_whatsapp: options?.sendWhatsapp ?? false,
-        require_cpf: true,
+        phone_country: sig.telefone ? "55" : undefined,
+        phone_number: sig.telefone?.replace(/\D/g, "").slice(-11) || undefined,
+        cpf: sig.cpf?.replace(/\D/g, "") || undefined,
+        // OneClick specific
+        qualification: sig.qualificacao || "parte",
+        send_automatic_email: true, // SEMPRE ZapSign envia emails
+        send_automatic_whatsapp: false, // NUNCA WhatsApp
+        order_group: options?.ordemAssinatura ? index + 1 : undefined,
       }));
 
       const authHeader = await getAuthHeader();
@@ -92,10 +98,13 @@ export const useFaciliSign = () => {
           Authorization: authHeader,
         },
         body: JSON.stringify({
+          useOneClick: true, // SEMPRE OneClick
           name: title,
           base64_pdf: base64Pdf,
           signers,
           lang: "pt-br",
+          require_signature: true,
+          signature_order_active: options?.ordemAssinatura || false,
           date_limit_to_sign: options?.dateLimitToSign,
           folder_path: "/facilita-adv/",
         }),
@@ -108,7 +117,7 @@ export const useFaciliSign = () => {
 
       const result = await response.json();
 
-      await saveDocumentToDatabase({
+      await saveDocumentMetadata({
         nome: title,
         zapsign_token: result.token,
         zapsign_open_id: result.open_id,
@@ -144,20 +153,22 @@ export const useFaciliSign = () => {
       sendEmail?: boolean;
       sendWhatsapp?: boolean;
       dateLimitToSign?: string;
+      ordemAssinatura?: boolean;
     }
   ): Promise<ZapSignDocResponse> => {
     setUploading(true);
     try {
-      const signers = signatarios.map((sig) => ({
+      const signers = signatarios.map((sig, index) => ({
         name: sig.nome,
         email: sig.email,
-        phone_country: "55",
-        phone_number: sig.telefone?.replace(/\D/g, "").slice(-11) || "",
-        cpf: sig.cpf?.replace(/\D/g, "") || "",
-        auth_mode: "assinaturaTela",
-        send_automatic_email: options?.sendEmail ?? true,
-        send_automatic_whatsapp: options?.sendWhatsapp ?? false,
-        require_cpf: true,
+        phone_country: sig.telefone ? "55" : undefined,
+        phone_number: sig.telefone?.replace(/\D/g, "").slice(-11) || undefined,
+        cpf: sig.cpf?.replace(/\D/g, "") || undefined,
+        // OneClick specific
+        qualification: sig.qualificacao || "parte",
+        send_automatic_email: true, // SEMPRE ZapSign envia emails
+        send_automatic_whatsapp: false, // NUNCA WhatsApp
+        order_group: options?.ordemAssinatura ? index + 1 : undefined,
       }));
 
       const authHeader = await getAuthHeader();
@@ -169,10 +180,13 @@ export const useFaciliSign = () => {
           Authorization: authHeader,
         },
         body: JSON.stringify({
+          useOneClick: true, // SEMPRE OneClick
           name: title,
           url_pdf: pdfUrl,
           signers,
           lang: "pt-br",
+          require_signature: true,
+          signature_order_active: options?.ordemAssinatura || false,
           date_limit_to_sign: options?.dateLimitToSign,
           folder_path: "/facilita-adv/",
         }),
@@ -185,7 +199,7 @@ export const useFaciliSign = () => {
 
       const result = await response.json();
 
-      await saveDocumentToDatabase({
+      await saveDocumentMetadata({
         nome: title,
         zapsign_token: result.token,
         zapsign_open_id: result.open_id,
@@ -213,40 +227,36 @@ export const useFaciliSign = () => {
     }
   };
 
-  const saveDocumentToDatabase = async (doc: {
-    nome: string;
-    zapsign_token: string;
-    zapsign_open_id?: string;
-    status: string;
-    original_file_url?: string;
-    signatarios?: any[];
-  }) => {
+  const saveDocumentMetadata = async (
+    doc: any // Aceita qualquer formato do resultado da API
+  ): Promise<void> => {
     const session = await supabase.auth.getSession();
-    const userId = session.data.session?.user?.id;
+    const user = session.data.session?.user;
 
-    if (!userId) {
+    if (!user) {
       console.error("Usuario nao autenticado");
       return;
     }
 
-    const { error } = await supabase.from("documentos_digitais").insert({
-      user_id: userId,
-      nome: doc.nome,
-      tipo: "application/pdf",
-      status: mapZapSignStatus(doc.status),
-      docuseal_template_id: doc.zapsign_token,
-      docuseal_submission_id: doc.zapsign_open_id || null,
-      signatarios: doc.signatarios,
-      webhook_data: {
-        original_file_url: doc.original_file_url,
-        provider: "zapsign",
-      },
+    const { error } = await supabase.from("zapsign_documents").insert({
+      user_id: user.id,
+      nome: doc.nome || doc.name,
+      zapsign_token: doc.zapsign_token || doc.token,
+      zapsign_open_id: doc.zapsign_open_id || doc.open_id,
+      status: doc.status || "pending",
+      signatarios: doc.signatarios || doc.signers || [],
+      original_file_url: doc.original_file_url || doc.original_file || null,
+      signed_file_url: doc.signed_file_url || doc.signed_file || null,
+      external_id: doc.external_id || null,
     });
 
     if (error) {
       console.error("Erro ao salvar documento:", error);
+    } else {
+      console.log("✅ Documento salvo com sucesso em zapsign_documents");
     }
   };
+
 
   const mapZapSignStatus = (status: string): string => {
     const statusMap: Record<string, string> = {
@@ -289,7 +299,7 @@ export const useFaciliSign = () => {
   ): Promise<{ documents: DocumentoFaciliSign[]; total: number; totalPages: number }> => {
     try {
       const authHeader = await getAuthHeader();
-      
+
       const response = await fetch(
         `/api/zapsign/db/all-documents?page=${page}&pageSize=${pageSize}`,
         {
@@ -305,7 +315,7 @@ export const useFaciliSign = () => {
       }
 
       const result = await response.json();
-      
+
       return {
         documents: result.documents.map((doc: any) => ({
           id: doc.id,
@@ -321,6 +331,7 @@ export const useFaciliSign = () => {
           source: doc.source,
           processo_id: doc.processo_id,
           numero_processo: doc.numero_processo,
+          linked_processes: doc.linked_processes || [], // ← ADICIONAR ESTA LINHA
         })),
         total: result.total,
         totalPages: result.totalPages,
@@ -347,27 +358,21 @@ export const useFaciliSign = () => {
       const docData = await getDocument(token);
 
       const { data: existingDoc } = await supabase
-        .from("documentos_digitais")
-        .select("webhook_data")
-        .eq("docuseal_template_id", token)
+        .from("zapsign_documents")
+        .select("signatarios")
+        .eq("zapsign_token", token)
         .single();
 
-      const existingWebhookData = (typeof existingDoc?.webhook_data === 'object' && existingDoc?.webhook_data !== null) 
-        ? existingDoc.webhook_data as Record<string, unknown>
-        : {};
-
       const { error } = await supabase
-        .from("documentos_digitais")
+        .from("zapsign_documents")
         .update({
           status: mapZapSignStatus(docData.status),
-          webhook_data: {
-            ...existingWebhookData,
-            signed_file_url: docData.signed_file,
-            original_file_url: docData.original_file,
-          },
+          signatarios: docData.signers,
+          signed_file_url: docData.signed_file,
+          original_file_url: docData.original_file,
           updated_at: new Date().toISOString(),
         })
-        .eq("docuseal_template_id", token);
+        .eq("zapsign_token", token);
 
       if (error) {
         console.error("Erro ao atualizar status:", error);
@@ -393,10 +398,8 @@ export const useFaciliSign = () => {
         throw new Error("Falha ao excluir documento");
       }
 
-      await supabase
-        .from("documentos_digitais")
-        .delete()
-        .eq("docuseal_template_id", token);
+      // Server DELETE já deleta de zapsign_documents
+
 
       toast({
         title: "Documento excluido",

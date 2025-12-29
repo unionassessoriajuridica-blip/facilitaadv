@@ -280,3 +280,49 @@ export interface ZapsignDocResponse {
   last_update_at: string;
   signers: ZapsignSignerResponse[];
 }
+
+// ====================================================================
+// ZapSign OneClick API Types
+// ====================================================================
+
+export interface ZapsignOneClickSigner {
+  name: string;
+  email?: string;
+  phone_country?: string; // "+55"
+  phone_number?: string;
+  send_automatic_email?: boolean;
+  send_automatic_whatsapp?: boolean;
+  send_automatic_whatsapp_signed_file?: boolean;
+  qualification?: string; // "testemunha", "advogado", "parte"
+  order_group?: number;
+  custom_message?: string;
+  external_id?: string;
+  redirect_link?: string;
+}
+
+export interface ZapsignOneClickRequest {
+  name: string;
+  base64_pdf?: string;
+  url_pdf?: string;
+  base64_docx?: string;
+  url_docx?: string;
+  signers: ZapsignOneClickSigner[];
+  // OneClick specific
+  one_click_active: boolean; // ALWAYS true for OneClick
+  require_signature?: boolean; // Require drawing signature
+  // Document options
+  lang?: 'pt-br' | 'es' | 'en';
+  brand_name?: string;
+  brand_logo?: string;
+  brand_primary_color?: string;
+  external_id?: string;
+  folder_path?: string;
+  date_limit_to_sign?: string;
+  signature_order_active?: boolean;
+  observers?: string[];
+  reminder_every_n_days?: number;
+  disable_signer_emails?: boolean;
+  allow_refuse_signature?: boolean;
+  disable_signers_get_original_file?: boolean;
+}
+

@@ -1,5 +1,4 @@
-import * as React from "react";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button.tsx";
 import {
@@ -59,21 +58,14 @@ const ProcessFinancial = () => {
   const fetchFinanceiro = async () => {
     try {
       const decodedClienteNome = decodeURIComponent(clienteNome || '');
-      
+
       let financeiroQuery = supabase
         .from('financeiro')
         .select('*')
         .eq('cliente_nome', decodedClienteNome)
         .order('vencimento', { ascending: true });
 
-      // Aplicar filtro apenas se NÃO tiver acesso global ao financeiro
-      if (!hasGlobalFinancialAccess) {
-        console.log('Aplicando filtro por user_id (sem acesso global)');
-        financeiroQuery = financeiroQuery.eq('user_id', user?.id);
-      } else {
-        console.log('Visualizando todos os dados financeiros (acesso global)');
-      }
-
+      // Sistema GLOBAL: Todos usuários veem TODOS os dados financeiros
       const { data, error } = await financeiroQuery;
 
       if (error) throw error;
@@ -248,26 +240,26 @@ const ProcessFinancial = () => {
         {/* Seções por Tipo */}
         {filtroTipo === "TODOS" || filtroTipo === "Entrada"
           ? renderGrupoFinanceiro(
-              "Entrada",
-              groupedData.entrada,
-              <DollarSign className="w-5 h-5 text-green-600" />
-            )
+            "Entrada",
+            groupedData.entrada,
+            <DollarSign className="w-5 h-5 text-green-600" />
+          )
           : null}
 
         {filtroTipo === "TODOS" || filtroTipo === "Honorários"
           ? renderGrupoFinanceiro(
-              "Honorários",
-              groupedData.honorarios,
-              <FileText className="w-5 h-5 text-blue-600" />
-            )
+            "Honorários",
+            groupedData.honorarios,
+            <FileText className="w-5 h-5 text-blue-600" />
+          )
           : null}
 
         {filtroTipo === "TODOS" || filtroTipo === "TMP"
           ? renderGrupoFinanceiro(
-              "TMP (Taxa de Manutenção Processual)",
-              groupedData.tmp,
-              <Calendar className="w-5 h-5 text-orange-600" />
-            )
+            "TMP (Taxa de Manutenção Processual)",
+            groupedData.tmp,
+            <Calendar className="w-5 h-5 text-orange-600" />
+          )
           : null}
 
         {filteredData.length === 0 && (

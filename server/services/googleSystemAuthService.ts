@@ -38,7 +38,7 @@ function getOAuth2Client(redirectUri?: string) {
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     throw new Error('Google OAuth credentials not configured');
   }
-  
+
   return new google.auth.OAuth2(
     GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET,
@@ -48,7 +48,7 @@ function getOAuth2Client(redirectUri?: string) {
 
 export function getAuthUrl(redirectUri: string): string {
   const oauth2Client = getOAuth2Client(redirectUri);
-  
+
   return oauth2Client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
@@ -63,17 +63,17 @@ export async function exchangeCodeForTokens(code: string, redirectUri: string): 
   email: string;
 }> {
   const oauth2Client = getOAuth2Client(redirectUri);
-  
+
   const { tokens } = await oauth2Client.getToken(code);
-  
+
   if (!tokens.access_token || !tokens.refresh_token) {
     throw new Error('Failed to get tokens from Google');
   }
-  
+
   oauth2Client.setCredentials(tokens);
   const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
   const userInfo = await oauth2.userinfo.get();
-  
+
   return {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token,
@@ -86,12 +86,12 @@ async function getStoredCredentials(): Promise<GoogleCredentials | null> {
   if (cachedCredentials && (Date.now() - lastFetchTime) < CACHE_TTL) {
     return cachedCredentials;
   }
-  
+
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     console.warn('Supabase credentials not configured');
     return null;
   }
-  
+
   try {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/google_system_credentials?service_type=eq.google_unified&is_active=eq.true&limit=1`,
@@ -103,19 +103,19 @@ async function getStoredCredentials(): Promise<GoogleCredentials | null> {
         },
       }
     );
-    
+
     if (!response.ok) {
       console.error('Failed to fetch Google credentials:', response.status);
       return null;
     }
-    
+
     const data = await response.json();
     if (data && data.length > 0) {
       cachedCredentials = data[0];
       lastFetchTime = Date.now();
       return cachedCredentials;
     }
-    
+
     return null;
   } catch (error) {
     console.error('Error fetching Google credentials:', error);
@@ -128,22 +128,22 @@ async function saveCredentials(credentials: Partial<GoogleCredentials>): Promise
     console.error('Supabase credentials not configured');
     return false;
   }
-  
+
   try {
     const existingCreds = await getStoredCredentials();
-    
+
     const url = existingCreds
       ? `${SUPABASE_URL}/rest/v1/google_system_credentials?id=eq.${existingCreds.id}`
       : `${SUPABASE_URL}/rest/v1/google_system_credentials`;
-    
+
     const method = existingCreds ? 'PATCH' : 'POST';
-    
+
     const payload = {
       ...credentials,
       service_type: 'google_unified',
       updated_at: new Date().toISOString(),
     };
-    
+
     const response = await fetch(url, {
       method,
       headers: {
@@ -154,15 +154,15 @@ async function saveCredentials(credentials: Partial<GoogleCredentials>): Promise
       },
       body: JSON.stringify(payload),
     });
-    
+
     if (!response.ok) {
       console.error('Failed to save Google credentials:', response.status);
       return false;
     }
-    
+
     cachedCredentials = null;
     lastFetchTime = 0;
-    
+
     return true;
   } catch (error) {
     console.error('Error saving Google credentials:', error);
@@ -175,43 +175,46 @@ async function refreshAccessToken(credentials: GoogleCredentials): Promise<strin
     console.error('No refresh token available');
     return null;
   }
-  
+
   try {
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials({
       refresh_token: credentials.refresh_token,
     });
-    
+
     const { credentials: newTokens } = await oauth2Client.refreshAccessToken();
-    
+
     if (!newTokens.access_token) {
       console.error('Failed to refresh access token');
       return null;
     }
-    
+
     await saveCredentials({
       access_token: newTokens.access_token,
       token_expiry: new Date(newTokens.expiry_date || Date.now() + 3600000).toISOString(),
     });
-    
+
     return newTokens.access_token;
-  } catch (error) {
-    console.error('Error refreshing access token:', error);
+  } catch (error: any) {
+    console.error('Error refreshing access token:', error.message || error);
+    if (error.response?.data) {
+      console.error('Refresh Token Error Details:', JSON.stringify(error.response.data));
+    }
     return null;
   }
 }
 
 export async function getAccessToken(): Promise<string> {
   const credentials = await getStoredCredentials();
-  
+
   if (!credentials) {
     throw new Error('Google integration not connected. Please connect Google in settings.');
   }
-  
+
   const expiryTime = new Date(credentials.token_expiry).getTime();
   const now = Date.now();
   const bufferTime = 5 * 60 * 1000;
-  
+
   if (expiryTime - now < bufferTime) {
     console.log('Access token expired or expiring soon, refreshing...');
     const newToken = await refreshAccessToken(credentials);
@@ -220,7 +223,7 @@ export async function getAccessToken(): Promise<string> {
     }
     throw new Error('Failed to refresh Google access token. Please reconnect.');
   }
-  
+
   return credentials.access_token;
 }
 
@@ -240,11 +243,11 @@ export async function getConnectionStatus(): Promise<{
   scopes?: string[];
 }> {
   const credentials = await getStoredCredentials();
-  
+
   if (!credentials) {
     return { connected: false };
   }
-  
+
   return {
     connected: credentials.is_active,
     email: credentials.email,
@@ -274,11 +277,11 @@ export async function connect(
 
 export async function disconnect(): Promise<boolean> {
   const credentials = await getStoredCredentials();
-  
+
   if (!credentials) {
     return true;
   }
-  
+
   try {
     if (credentials.access_token) {
       await fetch(`https://oauth2.googleapis.com/revoke?token=${credentials.access_token}`, {
@@ -288,16 +291,16 @@ export async function disconnect(): Promise<boolean> {
   } catch (error) {
     console.warn('Failed to revoke token:', error);
   }
-  
+
   const success = await saveCredentials({
     is_active: false,
     access_token: '',
     refresh_token: '',
   });
-  
+
   cachedCredentials = null;
   lastFetchTime = 0;
-  
+
   return success;
 }
 

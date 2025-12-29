@@ -2,10 +2,18 @@ import cron from 'node-cron';
 import { createClient } from '@supabase/supabase-js';
 import { sendDeadlineReminder } from '../services/resendService';
 
-const supabase = createClient(
-    process.env.VITE_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// ⚡ Lazy Singleton Pattern - Cliente é criado apenas quando necessário
+let supabaseInstance: any = null;
+
+function getSupabase() {
+    if (!supabaseInstance) {
+        supabaseInstance = createClient(
+            process.env.VITE_SUPABASE_URL!,
+            process.env.SUPABASE_SERVICE_ROLE_KEY!
+        );
+    }
+    return supabaseInstance;
+}
 
 const EMAIL_DESTINATARIO = 'unionassessoriajuridica@gmail.com';
 
@@ -39,7 +47,7 @@ async function enviarNotificacoesPrazos() {
     tresDias.setDate(tresDias.getDate() + 3);
 
     // Buscar prazos urgentes (≤3 dias)
-    const { data: prazos, error } = await supabase
+    const { data: prazos, error } = await getSupabase()
         .from('prazos')
         .select(`
             *,

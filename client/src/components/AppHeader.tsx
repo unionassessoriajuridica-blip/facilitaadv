@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Scale, Menu, X, User } from "lucide-react";
+import { GoogleStatusIndicator } from "./GoogleStatusIndicator";
 
 interface NavItem {
   label: string;
@@ -52,11 +53,10 @@ export function AppHeader() {
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
-              className={`text-sm font-medium transition-colors ${
-                isActive(item.path)
-                  ? "text-white border-b-2 border-amber-400 pb-1"
-                  : "text-amber-400 hover:text-amber-300"
-              }`}
+              className={`text-sm font-medium transition-colors ${isActive(item.path)
+                ? "text-white border-b-2 border-amber-400 pb-1"
+                : "text-amber-400 hover:text-amber-300"
+                }`}
               data-testid={`nav-${item.label.toLowerCase()}`}
             >
               {item.label}
@@ -65,15 +65,16 @@ export function AppHeader() {
         </nav>
 
         <div className="hidden lg:flex items-center gap-4">
-          <div 
+          <GoogleStatusIndicator />
+          <div
             className="flex items-center gap-2 cursor-pointer"
             onClick={() => navigate("/perfil")}
             data-testid="button-profile-desktop"
           >
             {user?.avatar_url ? (
-              <img 
-                src={user.avatar_url} 
-                alt={user.nome || "Avatar"} 
+              <img
+                src={user.avatar_url}
+                alt={user.nome || "Avatar"}
                 className="w-8 h-8 rounded-full object-cover"
               />
             ) : (
@@ -89,9 +90,9 @@ export function AppHeader() {
             </div>
           </div>
 
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={signOut}
             className="border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-900"
           >
@@ -118,26 +119,25 @@ export function AppHeader() {
             <button
               key={item.path}
               onClick={() => { navigate(item.path); setMobileMenuOpen(false); }}
-              className={`block w-full text-left text-sm py-2 font-medium pl-3 ${
-                isActive(item.path)
-                  ? "text-white border-l-2 border-amber-400"
-                  : "text-amber-400 hover:text-amber-300"
-              }`}
+              className={`block w-full text-left text-sm py-2 font-medium pl-3 ${isActive(item.path)
+                ? "text-white border-l-2 border-amber-400"
+                : "text-amber-400 hover:text-amber-300"
+                }`}
             >
               {item.label}
             </button>
           ))}
           <div className="border-t border-slate-700 pt-3 mt-3">
             <div className="flex items-center justify-between">
-              <div 
+              <div
                 className="flex items-center gap-2 cursor-pointer"
                 onClick={() => { navigate("/perfil"); setMobileMenuOpen(false); }}
                 data-testid="button-profile-mobile"
               >
                 {user?.avatar_url ? (
-                  <img 
-                    src={user.avatar_url} 
-                    alt={user.nome || "Avatar"} 
+                  <img
+                    src={user.avatar_url}
+                    alt={user.nome || "Avatar"}
                     className="w-6 h-6 rounded-full object-cover"
                   />
                 ) : (
@@ -148,9 +148,9 @@ export function AppHeader() {
                   <span className="text-xs text-gray-400">{getFuncaoLabel(user?.funcao)}</span>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => { signOut(); setMobileMenuOpen(false); }}
                 className="border-amber-400 text-amber-400 hover:bg-amber-400 hover:text-slate-900"
               >

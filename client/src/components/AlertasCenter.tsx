@@ -56,7 +56,7 @@ export function AlertasCenter() {
 
   const loadAlerts = useCallback(async () => {
     if (!user) return;
-    
+
     setLoading(true);
     const allAlerts: AlertItem[] = [];
 
@@ -78,7 +78,7 @@ export function AlertasCenter() {
               try {
                 const dateStr = alert.date;
                 let alertDate: Date | undefined;
-                
+
                 if (dateStr) {
                   if (dateStr.includes("T")) {
                     alertDate = new Date(dateStr);
@@ -111,27 +111,27 @@ export function AlertasCenter() {
 
       // Buscar eventos do calendário via API do sistema
       try {
-        const calendarStatusRes = await fetch("/api/calendar/status");
+        const calendarStatusRes = await fetch("/api/google/calendar/status"); // Corrigido prefixo
         const calendarStatus = await calendarStatusRes.json();
-        
+
         setCalendarConnected(calendarStatus.connected === true);
-        
+
         if (calendarStatus.connected) {
-          // Buscar eventos dos próximos 30 dias
+          // Buscar eventos dos próximos 7 dias
           const now = new Date();
           const futureDate = new Date();
-          futureDate.setDate(futureDate.getDate() + 30);
-          
-          const eventsRes = await fetch(`/api/calendar/events?timeMin=${now.toISOString()}&timeMax=${futureDate.toISOString()}`);
+          futureDate.setDate(futureDate.getDate() + 7);
+
+          const eventsRes = await fetch(`/api/google/calendar/events?timeMin=${now.toISOString()}&timeMax=${futureDate.toISOString()}`);
           if (eventsRes.ok) {
             const eventsData = await eventsRes.json();
-            const events = eventsData.events || [];
-            
+            const events = Array.isArray(eventsData) ? eventsData : (eventsData.events || []);
+
             events.forEach((event: any) => {
               try {
                 let eventDate: Date;
                 let isAllDay = false;
-                
+
                 if (event.start?.dateTime) {
                   eventDate = new Date(event.start.dateTime);
                 } else if (event.start?.date) {
@@ -141,7 +141,7 @@ export function AlertasCenter() {
                 } else {
                   return;
                 }
-                
+
                 if (!isNaN(eventDate.getTime())) {
                   allAlerts.push({
                     id: `evento-${event.id}`,
@@ -189,7 +189,7 @@ export function AlertasCenter() {
   }, [user, loadAlerts]);
 
   const isNoDate = (date: Date) => date.getFullYear() >= 9999;
-  
+
   const getUrgencyBadge = (date: Date, type: string) => {
     if (type === "assinatura") {
       return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Pendente</Badge>;
@@ -237,7 +237,7 @@ export function AlertasCenter() {
       setIsOpen(false);
       return;
     }
-    
+
     if (alert.processoId) {
       navigate(`/processo/${alert.processoId}`);
       setIsOpen(false);
@@ -386,7 +386,7 @@ export function AlertasCenter() {
                               )}
                               <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
                                 <Clock className="w-3 h-3" />
-                                {alert.isAllDay 
+                                {alert.isAllDay
                                   ? format(alert.date, "dd/MM/yyyy", { locale: ptBR }) + " (dia inteiro)"
                                   : format(alert.date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
                                 }
