@@ -96,7 +96,7 @@ const ProcessView = () => {
           console.log("Nova movimentação recebida via robô!", payload);
           carregarMovimentacoesRobo(); // Recarrega a lista
           toast({
-            title: "🔔 Nova Movimentação!",
+            title: "Nova Movimentação!",
             description: "O robô acabou de atualizar este processo.",
             className: "bg-green-500 text-white border-none"
           });
@@ -814,42 +814,42 @@ const ProcessView = () => {
               </TabsContent>
 
               <TabsContent value="info-processo" className="mt-6">
-                {/* --- NOVA SEÇÃO: MOVIMENTAÇÕES DO ROBÔ --- */}
+                {/* --- NOVA SEÇÃO: MOVIMENTAÇÕES DO ROBÔ (ATUALIZADA) --- */}
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <Bot className="w-5 h-5 text-primary" />
-                    Movimentações Recentes (Automação)
+                    Movimentações (TJSP/Robô)
                   </h3>
                   
-                  <Card className="border-l-4 border-l-primary shadow-sm">
-                    <CardContent className="p-0">
-                      <div className="max-h-[400px] overflow-y-auto">
-                        {observacoesRobo.length === 0 ? (
-                          <div className="p-8 text-center text-muted-foreground">
-                            <Bot className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                            <p>Nenhuma movimentação coletada pelo robô ainda.</p>
-                            <p className="text-xs mt-2">Rode o robô para atualizar.</p>
-                          </div>
-                        ) : (
-                          observacoesRobo.map((obs) => (
-                            <div key={obs.id} className="p-4 border-b last:border-0 hover:bg-muted/20 transition-colors">
-                              <div className="flex justify-between items-start mb-2">
-                                <span className="font-semibold text-primary">{obs.titulo}</span>
-                                <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full whitespace-nowrap ml-2">
-                                  {new Date(obs.created_at).toLocaleString('pt-BR')}
-                                </span>
-                              </div>
-                              <pre className="whitespace-pre-wrap text-sm text-foreground/80 font-sans leading-relaxed break-words">
-                                {obs.conteudo}
-                              </pre>
-                            </div>
-                          ))
-                        )}
+                  <div className="rounded-md bg-gray-50 p-4 border border-gray-200 shadow-sm">
+                    {processo?.movimentacoes ? (
+                      <>
+                        <div className="flex justify-between items-center mb-4 border-b pb-2">
+                          <span className="text-sm font-medium text-gray-500">
+                            Última sincronização
+                          </span>
+                          {processo.updated_at && (
+                            <Badge variant="outline" className="text-xs">
+                              {new Date(processo.updated_at).toLocaleString('pt-BR')}
+                            </Badge>
+                          )}
+                        </div>
+                        <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">
+                          {processo.movimentacoes}
+                        </pre>
+                      </>
+                    ) : (
+                      <div className="p-8 text-center text-muted-foreground">
+                        <Bot className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                        <p>Nenhuma movimentação importada ainda.</p>
+                        <p className="text-xs mt-2 italic">
+                          O robô atualizará este campo automaticamente.
+                        </p>
                       </div>
-                    </CardContent>
-                  </Card>
+                    )}
+                  </div>
                 </div>
-                {/* ----------------------------------------- */}
+                {/* ----------------------------------------------------- */}
 
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">

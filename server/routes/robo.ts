@@ -7,12 +7,13 @@ const router = Router();
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error("❌ [ROBO] Erro Crítico: Falta configuração do Supabase no .env");
-}
-
-// Cliente com permissão total (Service Role) para escrever no banco
+// Cliente com permissão total (Service Role)
 const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+
+// Função auxiliar para limpar formatação (apenas números)
+function limparNumero(num: string) {
+  return num.replace(/\D/g, '');
+}
 
 router.post("/atualizar", async (req, res) => {
   try {
@@ -30,43 +31,73 @@ router.post("/atualizar", async (req, res) => {
     console.log(`[ROBO] Recebendo dados para processo: ${numero_processo}`);
 
     // 2. Achar o processo no banco
+    // AVISO: Se o banco tiver formatação (pontos/traços), a busca deve ser exata.
+    // Se o banco tiver apenas números, use a função limparNumero() antes.
     const { data: processos, error: procError } = await supabase
       .from('processos')
-      .select('id, user_id, clientes(nome)')
+      .select('id')
       .eq('numero_processo', numero_processo)
       .limit(1);
 
     if (procError) throw procError;
 
     if (!processos || processos.length === 0) {
-      console.log(`[ROBO] Processo não encontrado: ${numero_processo}`);
+      console.log(`[ROBO] ❌ Processo não encontrado: ${numero_processo}`);
       return res.status(404).json({ error: "Processo não encontrado no sistema" });
     }
 
-    const processo = processos[0];
-    // Pega o nome do cliente de forma segura
-    const clienteNome = (processo.clientes as any)?.nome || "Cliente Desconhecido";
+    const processoId = processos[0].id;
 
-    // 3. Salvar na tabela 'observacoes_processo'
-    const { error: insertError } = await supabase
-      .from('observacoes_processo')
-      .insert({
-        user_id: processo.user_id,
-        processo_id: processo.id,
-        cliente_nome: clienteNome,
-        titulo: "Movimentações (Importado pelo Robô)",
-        conteudo: texto_movimentacoes
-      });
+    // 3. ATUALIZAR A TABELA PROCESSOS (Mudança aqui!) 
+    // Em vez de insert em observacoes, fazemos update no próprio processo
+    const { error: updateError } = await supabase
+      .from('processos')
+      .update({ 
+        movimentacoes: texto_movimentacoes,
+        updated_at: new Date().toISOString() // Atualiza data de modificação
+      })
+      .eq('id', processoId);
 
-    if (insertError) throw insertError;
+    if (updateError) throw updateError;
 
-    console.log(`[ROBO] Movimentações salvas com sucesso!`);
-    return res.json({ success: true, message: "Importação concluída" });
+    console.log(`[ROBO] ✅ Movimentações atualizadas na ficha do processo!`);
+    return res.json({ success: true, message: "Ficha do processo atualizada com sucesso" });
 
   } catch (error: any) {
     console.error("[ROBO] Erro interno:", error);
     return res.status(500).json({ error: error.message });
   }
 });
+
+// ... (código anterior da rota POST /atualizar)
+
+// NOVA ROTA: Lista todos os processos para o robô iterar
+router.get("/listar", async (req, res) => {
+  try {
+    const { token_seguranca } = req.query;
+
+    // 1. Segurança básica
+    if (token_seguranca !== "SENHA_DO_SEU_ROBO_123") {
+      return res.status(401).json({ error: "Acesso negado" });
+    }
+
+    // 2. Buscar apenas o necessário: Número e o Texto atual (para comparação)
+    const { data: processos, error } = await supabase
+      .from('processos')
+      .select('numero_processo, movimentacoes')
+      .eq('status', 'ATIVO') // Opcional: Só pega processos ativos
+      .not('numero_processo', 'is', null);
+
+    if (error) throw error;
+
+    return res.json(processos);
+
+  } catch (error: any) {
+    console.error("[ROBO] Erro ao listar:", error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// export default router; (Mantenha isso no final)
 
 export default router;

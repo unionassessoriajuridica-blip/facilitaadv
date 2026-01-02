@@ -35,6 +35,7 @@ export const processos = pgTable("processos", {
   tipoProcesso: text("tipo_processo").notNull(),
   clientePreso: boolean("cliente_preso").default(false),
   descricao: text("descricao"),
+  movimentacoes: text("movimentacoes"),
   prazo: date("prazo"),
   status: text("status").default("ATIVO"),
   createdAt: timestamp("created_at").defaultNow(),
