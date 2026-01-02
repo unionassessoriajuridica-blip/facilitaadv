@@ -1,8 +1,9 @@
+import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { setupVite, serveStatic, log } from "./vite";
 import path from "path";
-import "dotenv/config";
+// import "dotenv/config";
 // ⚡ Cron imports moved to lazy loading (see server.listen callback)
 // import { startDatajudCron, runDatajudBatchCron } from "./cron/datajud";
 // import { startPrazosEmailNotifications } from "./cron/notificacoes-prazos";
@@ -11,6 +12,14 @@ import crypto from 'crypto';
 // Routes will be lazy-loaded to speed up startup
 console.time("Total Startup");
 console.time("Imports");
+
+// === LOG DEBUG (REMOVER DEPOIS) ===
+console.log('[DEBUG] Teste .env:', {
+  SUPABASE_SERVICE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+  VITE_SUPABASE_URL: !!process.env.VITE_SUPABASE_URL,
+  ZAPSIGN: !!process.env.ZAPSIGN_API_TOKEN
+});
+// ==================================
 
 const app = express();
 app.use(express.json({ limit: '50mb' }));
@@ -59,6 +68,11 @@ import alertsRoutes from "./routes/alerts";
 app.use("/api/zapsign", zapsignRoutes);
 app.use("/api/google", googleRoutes);
 app.use("/api/alerts", alertsRoutes);
+
+
+// ADICIONE ESTAS DUAS LINHAS:
+import roboRoutes from "./routes/robo";
+app.use("/api/robo", roboRoutes);
 
 // ⏳ NON-CRITICAL ROUTES - Lazy-loaded to keep startup fast
 app.use("/api/email", (req, res, next) => {

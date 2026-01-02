@@ -28,6 +28,7 @@ import {
   Loader2,
   CheckSquare,
   FileSignature,
+  Bot, // Ícone para o Robô
 } from "lucide-react";
 import { ProcessoTarefas } from "@/components/ProcessoTarefas";
 import { ProcessoArquivos } from "@/components/ProcessoArquivos";
@@ -52,6 +53,9 @@ const ProcessView = () => {
   const [responsavel, setResponsavel] = useState<any>(null);
   const [atualizandoDatajud, setAtualizandoDatajud] = useState(false);
 
+  // --- NOVO: Estado para as movimentações do Robô ---
+  const [observacoesRobo, setObservacoesRobo] = useState<any[]>([]);
+
   const {
     canViewAllProcesses: hasGlobalProcessAccess,
     permissionsLoading: globalAccessLoading,
@@ -66,6 +70,43 @@ const ProcessView = () => {
       loadProcessData();
     }
   }, [id, user, permissionsLoading, globalAccessLoading]);
+
+  // --- NOVO: Effect para buscar e ouvir movimentações do Robô em Tempo Real ---
+  useEffect(() => {
+    if (!id) return;
+
+    const carregarMovimentacoesRobo = async () => {
+      const { data } = await supabase
+        .from('observacoes_processo')
+        .select('*')
+        .eq('processo_id', id)
+        .order('created_at', { ascending: false });
+      
+      if (data) setObservacoesRobo(data);
+    };
+
+    carregarMovimentacoesRobo();
+
+    // Inscrição no canal Realtime do Supabase
+    const canal = supabase
+      .channel('obs-robo-realtime')
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'observacoes_processo', filter: `processo_id=eq.${id}` }, 
+        (payload) => {
+          console.log("Nova movimentação recebida via robô!", payload);
+          carregarMovimentacoesRobo(); // Recarrega a lista
+          toast({
+            title: "🔔 Nova Movimentação!",
+            description: "O robô acabou de atualizar este processo.",
+            className: "bg-green-500 text-white border-none"
+          });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(canal); };
+  }, [id, toast]);
+  // -----------------------------------------------------------------------
 
   const loadProcessData = async () => {
     try {
@@ -772,9 +813,44 @@ const ProcessView = () => {
                 />
               </TabsContent>
 
-
-
               <TabsContent value="info-processo" className="mt-6">
+                {/* --- NOVA SEÇÃO: MOVIMENTAÇÕES DO ROBÔ --- */}
+                <div className="mb-8">
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Bot className="w-5 h-5 text-primary" />
+                    Movimentações Recentes (Automação)
+                  </h3>
+                  
+                  <Card className="border-l-4 border-l-primary shadow-sm">
+                    <CardContent className="p-0">
+                      <div className="max-h-[400px] overflow-y-auto">
+                        {observacoesRobo.length === 0 ? (
+                          <div className="p-8 text-center text-muted-foreground">
+                            <Bot className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                            <p>Nenhuma movimentação coletada pelo robô ainda.</p>
+                            <p className="text-xs mt-2">Rode o robô para atualizar.</p>
+                          </div>
+                        ) : (
+                          observacoesRobo.map((obs) => (
+                            <div key={obs.id} className="p-4 border-b last:border-0 hover:bg-muted/20 transition-colors">
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="font-semibold text-primary">{obs.titulo}</span>
+                                <span className="text-xs text-muted-foreground bg-secondary px-2 py-1 rounded-full whitespace-nowrap ml-2">
+                                  {new Date(obs.created_at).toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                              <pre className="whitespace-pre-wrap text-sm text-foreground/80 font-sans leading-relaxed break-words">
+                                {obs.conteudo}
+                              </pre>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+                {/* ----------------------------------------- */}
+
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold">
