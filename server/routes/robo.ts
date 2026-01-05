@@ -1,20 +1,27 @@
 import { Router } from "express";
 import { createClient } from '@supabase/supabase-js';
+import * as dotenv from 'dotenv';
 
+// CORREÇÃO 1: Importando o nome EXATO que está no seu arquivo
+import { gerarResumoMovimentacao } from "../services/aiService"; 
+import { enviarMensagemWhatsApp } from "../services/whatsappService";
+
+dotenv.config();
 const router = Router();
 
 // Configuração do Supabase
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Cliente com permissão total (Service Role)
-const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
-
-// Função auxiliar para limpar formatação (apenas números)
-function limparNumero(num: string) {
-  return num.replace(/\D/g, '');
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.error("CRÍTICO: Variáveis do Supabase não encontradas.");
 }
 
+const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+
+// ==============================================================================
+// ROTA: ATUALIZAR
+// ==============================================================================
 router.post("/atualizar", async (req, res) => {
   try {
     const { numero_processo, texto_movimentacoes, token_seguranca } = req.body;
@@ -28,14 +35,12 @@ router.post("/atualizar", async (req, res) => {
       return res.status(400).json({ error: "Dados incompletos" });
     }
 
-    console.log(`[ROBO] Recebendo dados para processo: ${numero_processo}`);
+    console.log(`[ROBO] Processando: ${numero_processo}`);
 
-    // 2. Achar o processo no banco
-    // AVISO: Se o banco tiver formatação (pontos/traços), a busca deve ser exata.
-    // Se o banco tiver apenas números, use a função limparNumero() antes.
+    // 2. Achar o processo e os dados do cliente
     const { data: processos, error: procError } = await supabase
       .from('processos')
-      .select('id')
+      .select('id, movimentacoes, clientes (nome, telefone)')
       .eq('numero_processo', numero_processo)
       .limit(1);
 
@@ -46,46 +51,83 @@ router.post("/atualizar", async (req, res) => {
       return res.status(404).json({ error: "Processo não encontrado no sistema" });
     }
 
-    const processoId = processos[0].id;
+    const processo = processos[0];
+    
+    // Verifica se houve mudança real no texto
+    const houveMudanca = processo.movimentacoes !== texto_movimentacoes;
 
-    // 3. ATUALIZAR A TABELA PROCESSOS (Mudança aqui!) 
-    // Em vez de insert em observacoes, fazemos update no próprio processo
+    // 3. Atualizar a tabela
     const { error: updateError } = await supabase
       .from('processos')
       .update({ 
         movimentacoes: texto_movimentacoes,
-        updated_at: new Date().toISOString() // Atualiza data de modificação
+        updated_at: new Date().toISOString()
       })
-      .eq('id', processoId);
+      .eq('id', processo.id);
 
     if (updateError) throw updateError;
 
-    console.log(`[ROBO] ✅ Movimentações atualizadas na ficha do processo!`);
-    return res.json({ success: true, message: "Ficha do processo atualizada com sucesso" });
+    // 4. LÓGICA DE NOTIFICAÇÃO
+    let debugMensagem = "Sem novidades, nenhuma mensagem enviada.";
+    let enviouWhatsApp = false;
+
+    if (houveMudanca && processo.clientes && processo.clientes.telefone) {
+        console.log(`[ROBO] 🔔 Novidade detectada para ${processo.clientes.nome}.`);
+
+        // A. Gerar IA (Usando sua função original)
+        // CORREÇÃO 2: Passamos apenas o texto, pois seu aiService só aceita 1 argumento
+        const resumoIA = await gerarResumoMovimentacao(texto_movimentacoes);
+        
+        if (resumoIA) {
+            // Montamos a mensagem cordial aqui, já que o aiService devolve só o resumo técnico
+            const mensagemFinal = `Olá, ${processo.clientes.nome}! 🏛️\n\n${resumoIA}\n\nQualquer dúvida, a equipe Rafael Anastácio Advogados está à disposição.`;
+
+            // B. Enviar WhatsApp
+            console.log(`[ROBO] 📤 Enviando para ${processo.clientes.telefone}...`);
+            enviouWhatsApp = await enviarMensagemWhatsApp(processo.clientes.telefone, mensagemFinal);
+            
+            if (enviouWhatsApp) {
+                debugMensagem = "Mensagem enviada com sucesso para o WhatsApp!";
+            } else {
+                debugMensagem = "Falha ao enviar WhatsApp (Verifique logs do servidor).";
+            }
+        } else {
+            console.log("[ROBO] IA retornou vazio ou erro, pulando envio.");
+            debugMensagem = "Erro na geração da IA.";
+        }
+
+    } else if (!houveMudanca) {
+        console.log("[ROBO] Texto idêntico ao anterior. Ignorando envio.");
+    }
+
+    return res.json({ 
+        success: true, 
+        message: "Ficha do processo atualizada",
+        detalhe_envio: debugMensagem,
+        whatsapp_enviado: enviouWhatsApp
+    });
 
   } catch (error: any) {
-    console.error("[ROBO] Erro interno:", error);
+    console.error("[ROBO] Erro crítico:", error);
     return res.status(500).json({ error: error.message });
   }
 });
 
-// ... (código anterior da rota POST /atualizar)
-
-// NOVA ROTA: Lista todos os processos para o robô iterar
+// ==============================================================================
+// ROTA: LISTAR (INTOCADA)
+// ==============================================================================
 router.get("/listar", async (req, res) => {
   try {
     const { token_seguranca } = req.query;
 
-    // 1. Segurança básica
     if (token_seguranca !== "SENHA_DO_SEU_ROBO_123") {
       return res.status(401).json({ error: "Acesso negado" });
     }
 
-    // 2. Buscar apenas o necessário: Número e o Texto atual (para comparação)
     const { data: processos, error } = await supabase
       .from('processos')
       .select('numero_processo, movimentacoes')
-      .eq('status', 'ATIVO') // Opcional: Só pega processos ativos
+      .eq('status', 'ATIVO')
       .not('numero_processo', 'is', null);
 
     if (error) throw error;
@@ -97,7 +139,5 @@ router.get("/listar", async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 });
-
-// export default router; (Mantenha isso no final)
 
 export default router;

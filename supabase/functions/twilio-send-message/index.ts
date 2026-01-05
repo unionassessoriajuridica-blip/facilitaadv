@@ -4,7 +4,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS, GET, PUT, DELETE',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 serve(async (req) => {
@@ -14,57 +14,55 @@ serve(async (req) => {
   }
 
   try {
-    // Verificar se é uma requisição de preflight CORS
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
-    }
-
     const { phone, message } = await req.json();
+
+    // OBS: Na API Oficial, as variáveis necessárias são:
+    // WHATSAPP_API_TOKEN (Seu Token de Acesso Permanente ou Temporário)
+    // WHATSAPP_PHONE_ID (O ID do número de telefone no painel da Meta)
     
-    const apiUrl = Deno.env.get('WHATSAPP_API_URL');
     const apiToken = Deno.env.get('WHATSAPP_API_TOKEN');
+    const phoneId = Deno.env.get('WHATSAPP_PHONE_ID'); 
 
-    if (!apiUrl || !apiToken) {
-      return new Response(JSON.stringify({ 
-        error: 'WhatsApp API credentials not configured'
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+    if (!apiToken || !phoneId) {
+      throw new Error('Credenciais do WhatsApp (Token ou Phone ID) não configuradas no Supabase.');
     }
 
-    // Validar e formatar o telefone
-    const formattedPhone = phone.replace(/\D/g, '');
-    if (!formattedPhone) {
-      return new Response(JSON.stringify({ 
-        error: 'Número de telefone inválido'
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    // Limpeza do telefone (A API Oficial exige DDI+DDD+Numero, ex: 5516999999999)
+    // Remove caracteres não numéricos
+    let formattedPhone = phone.replace(/\D/g, '');
 
-    console.log('Enviando mensagem para:', formattedPhone);
+    console.log(`Enviando mensagem oficial para: ${formattedPhone}`);
 
-    const response = await fetch(`${apiUrl}/send-message`, {
+    // URL oficial da Meta (Cloud API)
+    const url = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
+
+    const body = {
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to: formattedPhone,
+      type: "text",
+      text: { // A estrutura que a Meta exige é assim
+        preview_url: false,
+        body: message
+      }
+    };
+
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        phone: formattedPhone,
-        message
-      })
+      body: JSON.stringify(body)
     });
 
     const responseData = await response.json();
 
     if (!response.ok) {
-      console.error('Erro da API WhatsApp:', responseData);
+      console.error('Erro API Meta:', JSON.stringify(responseData, null, 2));
       return new Response(JSON.stringify({ 
-        error: `WhatsApp API error: ${response.status}`,
-        details: responseData
+        error: 'Falha ao enviar mensagem via Meta',
+        details: responseData 
       }), {
         status: response.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -73,19 +71,16 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({
       success: true,
-      message: 'Mensagem enviada com sucesso',
+      message: 'Mensagem enviada via API Oficial',
       data: responseData
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
-  } catch (error) {
-    console.error('Error in WhatsApp function:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error',
-      message: error.message 
-    }), {
+  } catch (error: any) {
+    console.error('Erro interno:', error.message);
+    return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
