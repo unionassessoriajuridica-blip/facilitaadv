@@ -10,7 +10,7 @@ async function testeDireto() {
 
     // COLOQUE O NÚMERO QUE VOCÊ QUER TESTAR AQUI (Só números, com DDI)
     // Ex: Angola = 244... Brasil = 55...
-    const numeroDestino = "244946120705"; 
+    const numeroDestino = "5516993508206"; 
 
     if (!apiToken || !phoneId) {
         console.error("❌ ERRO: Faltam credenciais no .env");

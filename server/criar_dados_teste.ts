@@ -26,7 +26,7 @@ async function criarDadosTeste() {
     // =================================================================
     // CONFIGURAÇÃO: SEU NÚMERO DE WHATSAPP AQUI
     // =================================================================
-    const telefoneTeste = "5516993508206"; 
+    const telefoneTeste = "244922029378"; 
     const emailTeste = "admin@teste.com";
     // =================================================================
 
@@ -75,7 +75,7 @@ async function criarDadosTeste() {
             .from('clientes')
             .insert({
                 user_id: userId, // Usa o UUID do Auth
-                nome: "Cliente Teste Automatizado",
+                nome: "Cliente Teste2 Automatizado",
                 telefone: telefoneTeste,
                 email: "teste@exemplo.com"
             })
@@ -91,7 +91,7 @@ async function criarDadosTeste() {
     }
 
     // 3. Criar Processo vinculado
-    const numeroProcessoFake = "0000002-00.2026.8.26.0000";
+    const numeroProcessoFake = "0000042-00.2026.8.26.0000";
 
     // Verifica se processo já existe
     const { data: processosBusca } = await supabase.from('processos').select('id').eq('numero_processo', numeroProcessoFake).limit(1);
