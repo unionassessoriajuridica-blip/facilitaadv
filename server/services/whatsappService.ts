@@ -24,7 +24,6 @@ export async function enviarMensagemWhatsApp(telefone: string, mensagem: string)
       to: formattedPhone,
       type: "text",
       text: { 
-        preview_url: false,
         body: mensagem
       }
     };

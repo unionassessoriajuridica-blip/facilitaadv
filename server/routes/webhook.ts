@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { gerarRespostaChat } from "../services/aiService";
 import { enviarMensagemWhatsApp } from "../services/whatsappService";
+import { getContextoCliente } from "../services/contextService";
 
 const router = Router();
 
@@ -22,16 +23,33 @@ router.post("/", async (req, res) => {
     // Navega pela estrutura JSON da Meta para pegar a mensagem
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
+    // DEBUG: log raw message structure (truncado)
+    try {
+      console.log('[WEBHOOK] raw message preview:', JSON.stringify(message).slice(0,1000));
+    } catch (e) {
+      console.log('[WEBHOOK] raw message: <erro ao serializar>');
+    }
+
     if (message && message.type === "text") {
       const customerPhone = message.from;
       const customerText = message.text.body;
 
       console.log(`[BOT] Mensagem de ${customerPhone}: ${customerText}`);
 
-      // 1. Gera a resposta usando a lógica que você já criou no aiService
-      const respostaIA = await gerarRespostaChat(customerText);
+      // 1. Busca o contexto do cliente no Supabase
+      const contexto = await getContextoCliente(customerPhone);
 
-      // 2. Envia de volta para o cliente usando seu whatsappService
+      // 2. Gera a resposta usando a lógica de IA (passando o contexto)
+      const respostaIA = await gerarRespostaChat(customerText, contexto);
+
+      // DEBUG: logar parte da resposta da IA para facilitar diagnóstico
+      try {
+        console.log(`[BOT] Resposta IA (preview): ${String(respostaIA).slice(0,300).replace(/\n/g, ' ')}${String(respostaIA).length > 300 ? '…' : ''}`);
+      } catch (e) {
+        console.log('[BOT] Resposta IA: <erro ao serializar>');
+      }
+
+      // 3. Envia de volta para o cliente
       const enviado = await enviarMensagemWhatsApp(customerPhone, respostaIA);
 
       if (enviado) {

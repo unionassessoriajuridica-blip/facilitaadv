@@ -33,7 +33,7 @@ async function testeDireto() {
                 recipient_type: "individual",
                 to: numeroDestino,
                 type: "text",
-                text: { body: "🔔 Teste de Diagnóstico: Se você ler isso, o sistema funciona!" }
+                text: { body: "Recebeu essa mensagem patrão? Testando aqui, o feedback do bot com API do site." }
             })
         });
 
