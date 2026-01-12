@@ -8,6 +8,11 @@ import crypto from 'crypto';
 // --- NOVOS IMPORTS DO SISTEMA DE WHATSAPP ---
 import roboRoutes from "./routes/robo";
 import webhookRoutes from "./routes/webhook";
+import zapsignRoutes from "./routes/zapsign";
+import googleRoutes from "./routes/google";
+import alertsRoutes from "./routes/alerts";
+// Certifique-se de importar o cron de cobrança
+import { startCobrancaCron } from "./cron/cobrancaCron";
 // --------------------------------------------
 
 // Routes will be lazy-loaded to speed up startup
@@ -59,9 +64,6 @@ app.use((req, res, next) => {
 });
 
 // ⚡ CRITICAL ROUTES - Pre-loaded for instant availability
-import zapsignRoutes from "./routes/zapsign";
-import googleRoutes from "./routes/google";
-import alertsRoutes from "./routes/alerts";
 
 // REGISTER ROUTES
 // Colocamos o Webhook no topo para garantir prioridade de resposta à Meta
@@ -412,6 +414,12 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       import("./cron/notificacoes-prazos").then(module => {
         module.startPrazosEmailNotifications();
         log("✅ Email cron ready");
+      })
+      ,
+      // ADICIONA AQUI: Cron de cobrança
+      import("./cron/cobrancaCron").then(module => {
+        module.startCobrancaCron(); // Inicia o agendador
+        log("✅ Cobrança cron ready");
       })
     ]);
   });

@@ -4,7 +4,7 @@ import * as dotenv from 'dotenv';
 
 // CORREÇÃO 1: Importando o nome EXATO que está no seu arquivo
 import { gerarResumoMovimentacao } from "../services/aiService"; 
-import { enviarMensagemWhatsApp } from "../services/whatsappService";
+import { enviarMensagemWhatsApp, enviarTemplateWhatsApp } from "../services/whatsappService";
 
 dotenv.config();
 const router = Router();
@@ -79,21 +79,29 @@ router.post("/atualizar", async (req, res) => {
         const resumoIA = await gerarResumoMovimentacao(texto_movimentacoes);
         
         if (resumoIA) {
-            // Montamos a mensagem cordial aqui, já que o aiService devolve só o resumo técnico
-            const mensagemFinal = `Olá, ${processo.clientes.nome}! 🏛️\n\n${resumoIA}\n\nQualquer dúvida, a equipe Rafael Anastácio Advogados está à disposição.`;
+          // Prepara o resumo e limita para evitar cortes no envio de template
+          const resumoLimitado = resumoIA.length > 1000 ? resumoIA.substring(0, 997) + "..." : resumoIA;
 
-            // B. Enviar WhatsApp
-            console.log(`[ROBO] 📤 Enviando para ${processo.clientes.telefone}...`);
-            enviouWhatsApp = await enviarMensagemWhatsApp(processo.clientes.telefone, mensagemFinal);
-            
-            if (enviouWhatsApp) {
-                debugMensagem = "Mensagem enviada com sucesso para o WhatsApp!";
-            } else {
-                debugMensagem = "Falha ao enviar WhatsApp (Verifique logs do servidor).";
-            }
+          console.log(`[ROBO] 📤 Enviando TEMPLATE para ${processo.clientes.telefone}...`);
+
+          // Envia o template criado no painel da Meta (nome: atualizacao_processual)
+          enviouWhatsApp = await enviarTemplateWhatsApp(
+            processo.clientes.telefone,
+            "atualizacao_processual",
+            [processo.clientes.nome, resumoLimitado]
+          );
+
+          if (enviouWhatsApp) {
+            debugMensagem = "Template enviado com sucesso!";
+          } else {
+            debugMensagem = "Falha ao enviar Template (Verifique se o modelo foi aprovado e o número está correto).";
+            // Opcional: tentar enviar mensagem de texto comum caso a janela esteja aberta
+            // const mensagemFinal = `Olá, ${processo.clientes.nome}! 🏛️\n\n${resumoLimitado}\n\nQualquer dúvida, a equipe Rafael Anastácio Advogados está à disposição.`;
+            // enviouWhatsApp = await enviarMensagemWhatsApp(processo.clientes.telefone, mensagemFinal);
+          }
         } else {
-            console.log("[ROBO] IA retornou vazio ou erro, pulando envio.");
-            debugMensagem = "Erro na geração da IA.";
+          console.log("[ROBO] IA retornou vazio ou erro, pulando envio.");
+          debugMensagem = "Erro na geração da IA.";
         }
 
     } else if (!houveMudanca) {

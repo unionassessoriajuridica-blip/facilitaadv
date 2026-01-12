@@ -1,47 +1,60 @@
 // server/testar_robo.ts
-import fetch from 'node-fetch'; // Necessário se estiver rodando localmente em Node antigo
+import fetch from 'node-fetch'; 
 
-async function dispararTeste() {
-  // CONFIGURAÇÃO DO ROBÔ
-  const IP_DO_VPS = "177.136.229.37"; // Seu IP
-  const PORTA = "5000";
+async function dispararTesteRobo() {
+  // CONFIGURAÇÃO
+  // Se estiver rodando localmente na sua máquina: use http://localhost:5000
+  // Se estiver rodando este script DE FORA do VPS: use o IP real http://177.136.229.37:5000
   const URL_API = "http://localhost:5000/api/robo/atualizar";
 
   console.log(`🚀 Robô iniciando disparo para: ${URL_API}`);
+  console.log(`ℹ️  Este teste simula o recebimento de uma nova movimentação.`);
+  console.log(`ℹ️  O servidor deve:`);
+  console.log(`   1. Detectar mudança no texto.`);
+  console.log(`   2. Gerar resumo com IA.`);
+  console.log(`   3. Enviar o TEMPLATE de WhatsApp para o cliente.`);
 
   try {
+    const timestamp = new Date().toISOString();
+    
     const response = await fetch(URL_API, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json' 
       },
       body: JSON.stringify({
-        "token_seguranca": "SENHA_DO_SEU_ROBO_123",
+        "token_seguranca": "SENHA_DO_SEU_ROBO_123", // Certifique-se que bate com seu código server/routes/robo.ts
         
-        // NOVO PROCESSO QUE CRIAMOS AGORA
+        // IMPORTANTE: Este processo deve existir no seu banco e ter cliente vinculado com telefone!
         "numero_processo": "0000062-00.2026.8.26.0000",
         
-        // TEXTO NOVO PARA GERAR NOTIFICAÇÃO (com data para ser sempre único)
-        "texto_movimentacoes": `Disparo de teste em ${new Date().toISOString()}. O juiz confirmou que o apontamento para o IP ${IP_DO_VPS} está correto.`
+        // Mudamos o texto para garantir que o sistema detecte como "Novidade"
+        "texto_movimentacoes": `Movimentação de Teste Automático em ${timestamp}. 
+        O sistema identificou uma atualização processual relevante para teste de envio de template.
+        Conclusão ao Juiz para despacho saneador.`
       })
     });
 
     const data = await response.json();
-    console.log("📡 Resposta do Servidor:", data);
+    console.log("\n📡 Resposta do Servidor:", JSON.stringify(data, null, 2));
     
     if (response.ok) {
-        console.log("✅ SUCESSO! O servidor aceitou. Verifique seu WhatsApp.");
+        if (data.whatsapp_enviado) {
+            console.log("\n✅ SUCESSO TOTAL! O WhatsApp (Template) foi enviado.");
+        } else {
+            console.log("\n⚠️  ATENÇÃO: O processo foi atualizado, mas o WhatsApp NÃO foi enviado.");
+            console.log("Verifique: O processo mudou de verdade? O cliente tem telefone? As chaves da Meta estão no .env?");
+            console.log("Detalhe do envio:", data.detalhe_envio);
+        }
     } else {
-        console.log("❌ ERRO: O servidor recusou ou deu erro interno.");
+        console.log("\n❌ ERRO NA API DO ROBÔ.");
     }
 
-  } catch (error) {
-    console.error("❌ FALHA DE CONEXÃO: O robô não conseguiu achar o servidor.");
-    console.error("VERIFIQUE: ");
-    console.error("1. O servidor no VPS está rodando? (pm2 status ou npm run dev)");
-    console.error("2. A porta 5000 está liberada? (ufw allow 5000)");
-    console.error("Erro detalhado:", error.message);
+  } catch (error: any) {
+    console.error("❌ FALHA DE CONEXÃO COM O SERVIDOR LOCAL.");
+    console.error("Certifique-se que o servidor (npm run dev) está rodando em outro terminal.");
+    console.error("Erro:", error.message);
   }
 }
 
-dispararTeste();
+dispararTesteRobo();

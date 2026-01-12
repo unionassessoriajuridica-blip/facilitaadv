@@ -262,7 +262,7 @@ const NewProcess = () => {
 
         setClienteData({
           nomeCompleto: cliente.nome || "",
-          rg: "", // RG não está sendo salvo na tabela clientes atual
+          rg: cliente.rg || "", // correção
           cpf: cliente.cpf_cnpj || "",
           dataNascimento: "",
           telefone: cliente.telefone || "",
@@ -793,6 +793,7 @@ const NewProcess = () => {
             {
               user_id: user.id,
               nome: clienteData.nomeCompleto,
+              rg: removeMask(clienteData.rg), // correção
               email: clienteData.email,
               telefone: clienteData.telefone,
               cpf_cnpj: removeMask(clienteData.cpf),

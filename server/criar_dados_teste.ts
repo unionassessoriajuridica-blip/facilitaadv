@@ -1,3 +1,4 @@
+// server/criar_dados_teste.ts
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 
@@ -21,13 +22,15 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
 });
 
 async function criarDadosTeste() {
-    console.log("🛠️  Iniciando criação de dados de teste (Modo Admin)...");
+    console.log("🛠️  Iniciando criação de dados de teste (Via Supabase Auth)...");
 
     // =================================================================
-    // CONFIGURAÇÃO: SEU NÚMERO DE WHATSAPP AQUI
+    // CONFIGURAÇÃO DOS DADOS DE TESTE
     // =================================================================
     const telefoneTeste = "244946120705"; 
-    const emailTeste = "admin@teste.com";
+    const nomeCliente = "Edgar Catraio";
+    const numeroProcessoTeste = "0000062-00.2026.8.26.0000";
+    const emailAdmin = "admin@teste.com";
     // =================================================================
 
     let userId: string;
@@ -40,15 +43,15 @@ async function criarDadosTeste() {
         return;
     }
 
-    const usuarioExistente = users.find(u => u.email === emailTeste);
+    const usuarioExistente = users.find(u => u.email === emailAdmin);
 
     if (usuarioExistente) {
         userId = usuarioExistente.id;
-        console.log(`👤 Usuário Auth encontrado: ${emailTeste} (ID: ${userId})`);
+        console.log(`👤 Usuário Auth encontrado: ${emailAdmin} (ID: ${userId})`);
     } else {
         console.log(`⚠️ Usuário não encontrado. Criando novo usuário Auth...`);
         const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-            email: emailTeste,
+            email: emailAdmin,
             password: "senha_teste_123", // Senha temporária
             email_confirm: true
         });
@@ -58,26 +61,29 @@ async function criarDadosTeste() {
             return;
         }
         userId = newUser.user.id;
-        console.log(`✅ Usuário Auth criado: ${emailTeste} (ID: ${userId})`);
+        console.log(`✅ Usuário Auth criado: ${emailAdmin} (ID: ${userId})`);
     }
 
     // 2. Criar um Cliente de Teste vinculado a esse usuário (UUID)
-    // Verifica antes se o cliente já existe para evitar duplicidade
-    const { data: clientesBusca } = await supabase.from('clientes').select('id').eq('telefone', telefoneTeste).limit(1);
+    const { data: clientesBusca } = await supabase
+        .from('clientes')
+        .select('id, nome')
+        .eq('telefone', telefoneTeste)
+        .limit(1);
     
     let clienteId: string;
 
     if (clientesBusca && clientesBusca.length > 0) {
         clienteId = clientesBusca[0].id;
-        console.log(`✅ Cliente com este telefone já existe (ID: ${clienteId})`);
+        console.log(`✅ Cliente já existe: ${clientesBusca[0].nome} (ID: ${clienteId})`);
     } else {
         const { data: cliente, error: clientError } = await supabase
             .from('clientes')
             .insert({
                 user_id: userId, // Usa o UUID do Auth
-                nome: "Cliente Teste3 Automatizado",
+                nome: nomeCliente,
                 telefone: telefoneTeste,
-                email: "teste@exemplo.com"
+                email: "edgar.catraio@teste.com"
             })
             .select()
             .single();
@@ -91,20 +97,29 @@ async function criarDadosTeste() {
     }
 
     // 3. Criar Processo vinculado
-    const numeroProcessoFake = "0000062-00.2026.8.26.0000";
-
     // Verifica se processo já existe
-    const { data: processosBusca } = await supabase.from('processos').select('id').eq('numero_processo', numeroProcessoFake).limit(1);
+    const { data: processosBusca } = await supabase
+        .from('processos')
+        .select('id')
+        .eq('numero_processo', numeroProcessoTeste)
+        .limit(1);
 
     if (processosBusca && processosBusca.length > 0) {
-        console.log(`⚠️ O processo ${numeroProcessoFake} já existe. Use-o no Postman.`);
+        console.log(`⚠️ O processo ${numeroProcessoTeste} já existe.`);
+        // Atualiza para garantir que está vinculado ao cliente Edgar
+        await supabase
+            .from('processos')
+            .update({ cliente_id: clienteId, status: 'ATIVO' })
+            .eq('id', processosBusca[0].id);
+        console.log(`🔄 Processo atualizado para vincular a ${nomeCliente}.`);
+
     } else {
         const { data: processo, error: procError } = await supabase
             .from('processos')
             .insert({
                 user_id: userId,
                 cliente_id: clienteId,
-                numero_processo: numeroProcessoFake,
+                numero_processo: numeroProcessoTeste,
                 tipo_processo: "Civil",
                 status: "ATIVO",
                 movimentacoes: "Aguardando primeira movimentação..."
@@ -120,9 +135,10 @@ async function criarDadosTeste() {
     }
 
     console.log("---------------------------------------------------");
-    console.log("🚀 PRONTO PARA O POSTMAN!");
-    console.log("Use estes dados no JSON:");
-    console.log(`"numero_processo": "${numeroProcessoFake}"`);
+    console.log("🚀 TUDO PRONTO!");
+    console.log(`Cliente: ${nomeCliente} (${telefoneTeste})`);
+    console.log(`Processo: ${numeroProcessoTeste}`);
+    console.log("Agora rode o script: npx tsx server/testar_robo.ts");
     console.log("---------------------------------------------------");
 }
 

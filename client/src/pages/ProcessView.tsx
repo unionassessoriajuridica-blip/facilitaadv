@@ -493,38 +493,61 @@ const ProcessView = () => {
                     <h3 className="text-lg font-semibold mb-4">
                       Dados Pessoais
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">
-                          Nome Completo
-                        </label>
-                        <p className="text-base font-medium">{cliente?.nome || "-"}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">
-                          CPF
-                        </label>
-                        <p className="text-base">{cliente?.cpf_cnpj || "-"}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">
-                          Telefone
-                        </label>
-                        <p className="text-base">{cliente?.telefone || "-"}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-muted-foreground">
-                          E-mail
-                        </label>
-                        <p className="text-base">{cliente?.email || "-"}</p>
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="text-sm font-medium text-muted-foreground">
-                          Endereço
-                        </label>
-                        <p className="text-base">{cliente?.endereco || "-"}</p>
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <div>
+    <label className="text-sm font-medium text-muted-foreground">
+      Nome Completo
+    </label>
+    <p className="text-base font-medium">{cliente?.nome || "-"}</p>
+  </div>
+  
+  {/* ADICIONE ESTE BLOCO DO RG */}
+  <div>
+    <label className="text-sm font-medium text-muted-foreground">
+      RG
+    </label>
+    <p className="text-base">{cliente?.rg || "-"}</p>
+  </div>
+
+  <div>
+    <label className="text-sm font-medium text-muted-foreground">
+      CPF
+    </label>
+    <p className="text-base">{cliente?.cpf_cnpj || "-"}</p>
+  </div>
+  
+  <div>
+    <label className="text-sm font-medium text-muted-foreground">
+      Telefone
+    </label>
+    <p className="text-base">{cliente?.telefone || "-"}</p>
+  </div>
+  
+  <div>
+    <label className="text-sm font-medium text-muted-foreground">
+      E-mail
+    </label>
+    <p className="text-base">{cliente?.email || "-"}</p>
+  </div>
+
+  {/* ADICIONE O CEP AQUI SEPARADAMENTE PARA GARANTIR QUE APAREÇA */}
+  <div>
+    <label className="text-sm font-medium text-muted-foreground">
+      CEP
+    </label>
+    {/* Tenta extrair o CEP do endereço ou mostra vazio */}
+    <p className="text-base">
+      {cliente?.endereco ? cliente.endereco.split('-').pop().trim() : "-"}
+    </p>
+  </div>
+
+  <div className="md:col-span-2">
+    <label className="text-sm font-medium text-muted-foreground">
+      Endereço Completo
+    </label>
+    <p className="text-base">{cliente?.endereco || "-"}</p>
+  </div>
+</div>
                   </div>
 
                   <div>
