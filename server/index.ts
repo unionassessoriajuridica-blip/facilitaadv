@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { setupVite, serveStatic, log } from "./vite";
+import { prospeccaoJob } from './cron/prospeccaoMaps';
 import path from "path";
 import crypto from 'crypto';
 
@@ -11,8 +12,9 @@ import webhookRoutes from "./routes/webhook";
 import zapsignRoutes from "./routes/zapsign";
 import googleRoutes from "./routes/google";
 import alertsRoutes from "./routes/alerts";
+import campanhaRoutes from './routes/campanha';
 // Certifique-se de importar o cron de cobrança
-import { startCobrancaCron } from "./cron/cobrancaCron";
+import { startCobrancaCron } from "./cron/cobrancaCron";  
 // --------------------------------------------
 
 // Routes will be lazy-loaded to speed up startup
@@ -72,6 +74,7 @@ app.use("/api/robo", roboRoutes);
 app.use("/api/zapsign", zapsignRoutes);
 app.use("/api/google", googleRoutes);
 app.use("/api/alerts", alertsRoutes);
+app.use('/api/campanha', campanhaRoutes);
 
 // ⏳ NON-CRITICAL ROUTES - Lazy-loaded to keep startup fast
 app.use("/api/email", (req, res, next) => {
@@ -420,6 +423,12 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
       import("./cron/cobrancaCron").then(module => {
         module.startCobrancaCron(); // Inicia o agendador
         log("✅ Cobrança cron ready");
+      })
+      ,
+      // Cron de prospecção (Anastácio Soluções) - agendado, mas start manual aqui
+      import("./cron/prospeccaoMaps").then(module => {
+        module.prospeccaoJob.start();
+        log("🤖 Robô Anastácio Soluções (Maps) agendado: A cada 2 dias às 10h.");
       })
     ]);
   });
