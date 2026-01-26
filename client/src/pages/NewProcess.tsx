@@ -110,6 +110,91 @@ const NewProcess = () => {
     cep: "",
   });
 
+ // --- INÍCIO DA LÓGICA DE RASCUNHO INTELIGENTE (CRIAR E EDITAR) ---
+
+  // Função auxiliar para gerar a chave única do rascunho
+  const getStorageKey = (id: string | null, isEdit: boolean) => {
+    if (isEdit && id) return `rascunho_edit_${id}`; // Chave única para cada edição
+    return "rascunho_novo_processo"; // Chave fixa para criação
+  };
+
+  // 1. SALVAR: Monitora mudanças e salva no navegador
+  useEffect(() => {
+    // Não salva se estiver carregando os dados iniciais do banco
+    if (loading) return;
+
+    const key = getStorageKey(processoId, isEditMode);
+    
+    const rascunho = {
+      clienteData,
+      processoData,
+      financeiroData,
+      responsavelData,
+      currentStep,
+      timestamp: new Date().getTime() // Para saber quando foi salvo
+    };
+
+    // Salva apenas se houver algum dado preenchido
+    if (clienteData.nomeCompleto || processoData.numeroProcesso) {
+      localStorage.setItem(key, JSON.stringify(rascunho));
+    }
+  }, [
+    clienteData, 
+    processoData, 
+    financeiroData, 
+    responsavelData, 
+    currentStep, 
+    isEditMode, 
+    processoId,
+    loading
+  ]);
+
+  // 2. RECUPERAR (Criação): Roda apenas ao abrir a página "Novo Processo"
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId) {
+      const saved = localStorage.getItem("rascunho_novo_processo");
+      if (saved) aplicarRascunho(saved, "Você tinha um novo cadastro não finalizado.");
+    }
+  }, []);
+
+  // 3. RECUPERAR (Edição): Roda DEPOIS de carregar os dados do banco
+  // Adicionamos isso para sobrepor os dados do banco com o rascunho mais recente
+  useEffect(() => {
+    if (isEditMode && processoId && !loading) {
+      const key = `rascunho_edit_${processoId}`;
+      const saved = localStorage.getItem(key);
+      
+      if (saved) {
+        const dadosRascunho = JSON.parse(saved);
+        // Só aplica se o rascunho for recente (opcional, mas seguro)
+        aplicarRascunho(saved, "Recuperamos suas alterações não salvas nesta edição.");
+      }
+    }
+  }, [loading, isEditMode, processoId]);
+
+  // Função auxiliar para aplicar os dados na tela
+  const aplicarRascunho = (jsonString: string, mensagem: string) => {
+    try {
+      const dados = JSON.parse(jsonString);
+      if (dados.clienteData) setClienteData(dados.clienteData);
+      if (dados.processoData) setProcessoData(dados.processoData);
+      if (dados.financeiroData) setFinanceiroData(dados.financeiroData);
+      if (dados.responsavelData) setResponsavelData(dados.responsavelData);
+      // Opcional: restaurar o passo em que estava
+      // if (dados.currentStep) setCurrentStep(dados.currentStep);
+
+      toast({
+        title: "Dados recuperados",
+        description: mensagem,
+        duration: 3000,
+      });
+    } catch (e) {
+      console.error("Erro ao restaurar rascunho", e);
+    }
+  };
+  // --- FIM DA LÓGICA DE RASCUNHO ---
+  
   const tiposProcesso = [
     "Criminal",
     "Cível",
@@ -262,7 +347,7 @@ const NewProcess = () => {
 
         setClienteData({
           nomeCompleto: cliente.nome || "",
-          rg: cliente.rg || "", // correção
+          rg: cliente.rg || "", // <--- MUDE AQUI (Estava: rg: "")
           cpf: cliente.cpf_cnpj || "",
           dataNascimento: "",
           telefone: cliente.telefone || "",
@@ -740,6 +825,7 @@ const NewProcess = () => {
           .from("clientes")
           .update({
             nome: clienteData.nomeCompleto,
+            rg: removeMask(clienteData.rg), // <--- ADICIONE ESTA LINHA AQUI
             email: clienteData.email,
             telefone: clienteData.telefone,
             cpf_cnpj: removeMask(clienteData.cpf),
@@ -793,7 +879,7 @@ const NewProcess = () => {
             {
               user_id: user.id,
               nome: clienteData.nomeCompleto,
-              rg: removeMask(clienteData.rg), // correção
+              rg: removeMask(clienteData.rg), // <--- ADICIONE ESTA LINHA
               email: clienteData.email,
               telefone: clienteData.telefone,
               cpf_cnpj: removeMask(clienteData.cpf),
@@ -1067,6 +1153,11 @@ const NewProcess = () => {
         }
         console.log("Documentos vinculados com sucesso");
       }
+
+      // LIMPEZA DO RASCUNHO CORRETA
+      const storageKey = getStorageKey(processoId, isEditMode);
+      localStorage.removeItem(storageKey); // Remove o rascunho específico
+
       Swal.fire({
         title: "Sucesso!",
         text: "Processo salvo com sucesso. Redirecionando para o dashboard...",

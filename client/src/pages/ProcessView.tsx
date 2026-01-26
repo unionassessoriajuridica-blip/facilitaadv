@@ -530,17 +530,6 @@ const ProcessView = () => {
     <p className="text-base">{cliente?.email || "-"}</p>
   </div>
 
-  {/* ADICIONE O CEP AQUI SEPARADAMENTE PARA GARANTIR QUE APAREÇA */}
-  <div>
-    <label className="text-sm font-medium text-muted-foreground">
-      CEP
-    </label>
-    {/* Tenta extrair o CEP do endereço ou mostra vazio */}
-    <p className="text-base">
-      {cliente?.endereco ? cliente.endereco.split('-').pop().trim() : "-"}
-    </p>
-  </div>
-
   <div className="md:col-span-2">
     <label className="text-sm font-medium text-muted-foreground">
       Endereço Completo
