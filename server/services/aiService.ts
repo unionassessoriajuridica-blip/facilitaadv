@@ -1,7 +1,112 @@
 import OpenAI from "openai";
 import { getContextoCliente } from "./contextService";
+import { createClient } from "@supabase/supabase-js";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// Conexão direta com o banco para verificar se é um Lead de Campanha
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || "";
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_KEY || "";
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// ============================================================================
+// 1. BASE DE CONHECIMENTO NOVA (ANASTÁCIO SOLUÇÕES)
+// ============================================================================
+const INFO_ANASTACIO_SOLUCOES = `
+=================================================================
+                    ASSISTENTE VIRTUAL ANASTÁCIO SOLUÇÕES
+                        MANUAL COMPLETO DE ATENDIMENTO
+=================================================================
+
+DADOS INSTITUCIONAIS:
+RAZÃO SOCIAL: Anastácio Soluções (CNPJ: 40.360.585/0001-75)
+SEDE: Rua Alice Além Saad, nº 855, Ribeirão Preto - SP
+ATUAÇÃO: Nacional (todas as regiões do Brasil)
+ESTATÍSTICAS: 5.000+ clientes, 500+ parceiros, 98% satisfação.
+
+MISSÃO: Facilitar o acesso a garantias de crédito de forma simples, rápida e transparente.
+
+PRODUTOS PRINCIPAIS:
+
+1. FIANÇA LOCATÍCIA (IMOBILIÁRIA)
+   - Substitui o fiador tradicional no aluguel.
+   - Processo 100% digital, análise rápida.
+   - Benefícios: Elimina fiador, segurança para o proprietário, agilidade para a imobiliária.
+
+2. FIANÇA ODONTOLÓGICA (CLÍNICAS)
+   - Resolve o risco de inadimplência em tratamentos de alto valor (implantes, lentes).
+   - Modalidade A: Pagamento integral à clínica.
+   - Modalidade B: Garantia de parcelas.
+
+3. FIANÇA CIRURGIA PLÁSTICA (MÉDICOS)
+   - Garante o recebimento para cirurgiões plásticos.
+   - Permite parcelamento do procedimento para o paciente.
+
+DOCUMENTOS GERALMENTE SOLICITADOS:
+RG/CNH, CPF, Comprovante de Renda e Residência.
+
+CANAIS DE CONTATO:
+WhatsApp/Tel: (16) 99445-4742
+E-mail: anastaciosolucoes@gmail.com
+
+INSTRUÇÕES ESPECÍFICAS PARA O BOT (MUNDO FINANCEIRO):
+1. SEMPRE responda em português brasileiro.
+2. Use linguagem clara, comercial e objetiva.
+3. Se perguntarem de processos criminais, diga que este canal é exclusivo para Soluções Financeiras e redirecione suavemente.
+4. Seu objetivo é agendar uma simulação ou explicar o produto.
+`;
+
+// ============================================================================
+// 2. MELHORIAS: PITCH E VERIFICAÇÃO DE CAMPANHA
+// ============================================================================
+
+// ARGUMENTOS DE VENDA POR NICHO (O "Pulo do Gato")
+const PITCH_VENDAS: Record<string, string> = {
+    'IMOBILIARIA': `
+    FOCO: Fiança Locatícia Digital.
+    BENEFÍCIO: "Substituímos o fiador. Aprovação em minutos. A imobiliária fecha mais contratos e o proprietário tem garantia total."
+    `,
+    'DENTISTA': `
+    FOCO: Fiança Odontológica (Saúde).
+    BENEFÍCIO: "O Dr. recebe o tratamento à vista (antecipado) e o paciente parcela no boleto com a gente. Elimina a inadimplência e fecha tratamentos caros."
+    `,
+    'ESTETICA': `
+    FOCO: Fiança para Cirurgia Plástica.
+    BENEFÍCIO: "Seu paciente realiza o sonho da cirurgia parcelando no boleto, e a clínica recebe o valor integral com segurança antes do procedimento."
+    `
+};
+
+/**
+ * Verifica se o telefone pertence a um alvo da campanha e RETORNA O NICHO.
+ * Retorna null se não achar, ou string ('IMOBILIARIA', 'DENTISTA', etc) se achar.
+ */
+async function verificarOrigemCampanha(telefone: string): Promise<string | null> {
+  try {
+    const telLimpo = telefone.replace(/\D/g, '');
+    const telSem55 = telLimpo.startsWith('55') ? telLimpo.slice(2) : telLimpo;
+    
+    const { data, error } = await supabase
+      .from('leads_prospeccao')
+      .select('nicho')
+      .or(`telefone.eq.${telLimpo},telefone.eq.${telSem55},telefone.eq.55${telSem55}`)
+      .limit(1)
+      .single();
+
+    if (error || !data) return null;
+    const nichoDb = data.nicho || '';
+    if (nichoDb.includes('Imobiliária')) return 'IMOBILIARIA';
+    if (nichoDb.includes('Odonto') || nichoDb.includes('Dentista')) return 'DENTISTA';
+    if (nichoDb.includes('Plástica') || nichoDb.includes('Estética')) return 'ESTETICA';
+    return 'GENERICO';
+  } catch (e) {
+    console.error("Erro ao verificar campanha:", e);
+    return null;
+  }
+}
+
+// ============================================================================
+// 3. FUNÇÕES ORIGINAIS (MANTIDAS INTACTAS)
+// ============================================================================
 
 /**
  * Ferramenta interna para busca ativa de dados
@@ -27,25 +132,17 @@ export async function gerarResumoMovimentacao(textoCompletoMovimentacoes: string
           content: `Você é o assistente virtual oficial e sênior do escritório Rafael Anastácio Advogados. Seu objetivo é ser o braço direito do Dr. Rafael na gestão e o ponto de apoio técnico e humano para os clientes.
 
           DIRETRIZES DE INTELIGÊNCIA:
-
           NATURALIDADE E FLUIDEZ: Se o cliente já saudou, não repita "Olá". Use o nome do cliente para criar proximidade (ex: "Oi, João!"). Se o cliente pedir uma busca, não diga que vai buscar, apenas acione a ferramenta de busca e responda com o resultado já em mãos.
-
           SAUDAÇÃO ÚNICA: Evite ser robótico; se o papo já está em andamento, vá direto ao ponto.
-
           EXPLICAÇÃO DE MOVIMENTAÇÕES: Ao explicar andamentos, use linguagem simples e tranquilizadora. Regra obrigatória: Comece a explicação com: *Sobre a movimentação de [DATA]:*.
-
           BUSCA ATIVA E AUTÔNOMA: Se a informação solicitada (processo, CPF ou financeiro) não estiver no contexto atual, use imediatamente a função de busca. Só peça dados ao cliente (CPF/Número do Processo) se a busca ativa retornar vazio.
-
           NÍVEIS DE ACESSO: 
           - Modo Master (Dr. Rafael): Forneça resumos executivos, status de faturamento global e detalhes técnicos sem restrições.
           - Modo Cliente: Responda apenas sobre os dados dele e informações referentes ao Dr Rafael, e a empresa, focando em acolhimento e clareza.
 
           BASE DE CONHECIMENTO INSTITUCIONAL:
-
           Rafael Anastácio: Advogado criminalista sênior, fundador do escritório e da Facilita Adv. Especialista em Urgências 24h, Audiências de Custódia, Tribunal do Júri e Recursos em tribunais superiores (STJ/STF). Conhecido pela advocacia combativa e uso de tecnologia para máxima agilidade.
-
           Facilita Adv (https://facilita.adv.br/): Tecnologia jurídica de vanguarda que oferece monitoramento em tempo real de tribunais, tradução de juridiquês por IA, gestão automatizada de prazos e portal do cliente com faturamento transparente.
-
           Contatos: Sites https://rafaelanastacioadv.com.br/ e https://advrafaelanastacio.com.br. Telefone (16) 99350-8206. Atendimento digital seguro e criptografado.`
         },
         { 
@@ -64,12 +161,60 @@ export async function gerarResumoMovimentacao(textoCompletoMovimentacoes: string
   }
 }
 
-/**
- * Chatbot Principal - Inteligente, Flexível e com Níveis de Acesso
- */
+// ============================================================================
+// 3. CHATBOT PRINCIPAL (COM ROTEADOR NOVO)
+// ============================================================================
+
 export async function gerarRespostaChat(mensagemCliente: string, contexto?: any, telefoneUsuario: string = ''): Promise<string> {
   try {
     if (!process.env.OPENAI_API_KEY) return "Olá! No momento estou em manutenção técnica. Por favor, tente novamente em breve.";
+
+    // --- NOVA LÓGICA: DETECTOR DE INTENÇÃO (O ÚNICO ACRÉSCIMO) ---
+    const termosFinanceiros = [
+        'fiança', 'locatícia', 'aluguel', 'imobiliária', 'fiador',
+        'dentista', 'implante', 'odonto', 'dente', 'tratamento',
+        'cirurgia', 'plástica', 'estética', 'lipo', 'silicone', 'médico',
+        'anastácio soluções', 'anastacio', 'soluções financeiras', 'parceria',
+        'simulação'
+    ];
+    
+    // Ignora termos financeiros se o usuário estiver falando de "Honorários" ou "Valor do Processo" (coisas jurídicas)
+    const ehFinanceiro = termosFinanceiros.some(t => mensagemCliente.toLowerCase().includes(t)) 
+                         && !mensagemCliente.toLowerCase().includes('honorários') 
+                         && !mensagemCliente.toLowerCase().includes('processo');
+
+    if (ehFinanceiro) {
+        // >>> MODO ANASTÁCIO SOLUÇÕES (FINANCEIRO) <<<
+        // Aqui usamos um prompt específico e ignoramos a complexidade jurídica
+        const systemPromptFinanceiro = `
+        VOCÊ É A ASSISTENTE VIRTUAL DA ANASTÁCIO SOLUÇÕES.
+        Seu foco é comercial: Vender e explicar as Fianças (Locatícia, Odontológica, Estética).
+        
+        BASE DE CONHECIMENTO:
+        ${INFO_ANASTACIO_SOLUCOES}
+
+        DIRETRIZES:
+        - Se o cliente falar de prisão/processo, diga educadamente que este setor é de Soluções Financeiras e peça para ele contatar o jurídico.
+        - Seja cordial e vendedor.
+        `;
+
+        const responseFin = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+                { role: "system", content: systemPromptFinanceiro },
+                { role: "user", content: `Cliente: ${contexto?.cliente?.nome || 'Visitante'}\nMensagem: ${mensagemCliente}` }
+            ],
+            temperature: 0.3,
+            max_tokens: 500
+        });
+        
+        return responseFin.choices[0].message.content || "Erro no atendimento financeiro.";
+    }
+
+    // ========================================================================
+    // >>> MODO JURÍDICO (SEU CÓDIGO ORIGINAL ABAIXO) <<<
+    // Daqui para baixo é EXATAMENTE o que você já tinha, sem tirar nada.
+    // ========================================================================
 
     const isMaster = contexto?.isMaster === true;
 
@@ -150,6 +295,7 @@ export async function gerarRespostaChat(mensagemCliente: string, contexto?: any,
       }
     ];
 
+    // LÓGICA COMPLEXA DE CONTEXTO (MANTIDA)
     const resumoContexto = (() => {
       const cliente = contexto?.cliente || {};
       const processos = contexto?.processos || [];
