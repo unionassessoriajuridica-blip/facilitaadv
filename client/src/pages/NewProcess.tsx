@@ -55,6 +55,8 @@ const NewProcess = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isEditMode, setIsEditMode] = useState(false);
   const [processoId, setProcessoId] = useState<string | null>(null);
+  // Adicione junto com os outros states
+  const [isFinished, setIsFinished] = useState(false);
 
   const [responsavelId, setResponsavelId] = useState<string | null>(null);
 
@@ -121,7 +123,8 @@ const NewProcess = () => {
   // 1. SALVAR: Monitora mudanças e salva no navegador
   useEffect(() => {
     // Não salva se estiver carregando os dados iniciais do banco
-    if (loading) return;
+    if (loading || isFinished) return;
+
 
     const key = getStorageKey(processoId, isEditMode);
     
@@ -146,7 +149,8 @@ const NewProcess = () => {
     currentStep, 
     isEditMode, 
     processoId,
-    loading
+    loading,
+    isFinished 
   ]);
 
   // 2. RECUPERAR (Criação): Roda apenas ao abrir a página "Novo Processo"
@@ -1154,6 +1158,9 @@ const NewProcess = () => {
         console.log("Documentos vinculados com sucesso");
       }
 
+      // 1. Ativa a trava para impedir que o sistema salve novamente enquanto redireciona
+      setIsFinished(true);
+      
       // LIMPEZA DO RASCUNHO CORRETA
       const storageKey = getStorageKey(processoId, isEditMode);
       localStorage.removeItem(storageKey); // Remove o rascunho específico

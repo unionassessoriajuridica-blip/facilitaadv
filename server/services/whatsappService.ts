@@ -128,3 +128,15 @@ export async function enviarTemplateWhatsApp(telefone: string, templateName: str
     return false;
   }
 }
+
+// ============================================================================
+// 🚨 A CORREÇÃO MÁGICA (ADICIONE ISTO NO FINAL)
+// ============================================================================
+// Isso cria o objeto que os novos scripts (campanha/maps) estão procurando
+export const whatsappService = {
+    // Mapeia 'sendMessage' (novo) para 'enviarMensagemWhatsApp' (velho)
+    sendMessage: enviarMensagemWhatsApp,
+    
+    // Mapeia 'sendTemplate' (novo) para 'enviarTemplateWhatsApp' (velho)
+    sendTemplate: enviarTemplateWhatsApp
+};
