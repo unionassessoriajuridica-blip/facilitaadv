@@ -676,7 +676,9 @@ const NewProcess = () => {
             }
 
             const valorRestante = valorHonorarios - valorEntrada;
-            const valorParcela = valorRestante / quantidadeParcelas;
+
+            // CORREÇÃO AQUI: Forçar 2 casas decimais no cálculo
+            const valorParcela = parseFloat((valorRestante / quantidadeParcelas).toFixed(2));
 
             if (financeiroData.dataPrimeiroVencimento) {
               const dataBase = new Date(financeiroData.dataPrimeiroVencimento);
@@ -690,13 +692,24 @@ const NewProcess = () => {
                 const dataVencimento = new Date(dataBase);
                 dataVencimento.setMonth(dataVencimento.getMonth() + i);
 
+                // CORREÇÃO OPCIONAL (Ajuste de centavos):
+                // Adiciona a diferença de arredondamento na última parcela para fechar o valor exato
+                let valorFinalParcela = valorParcela;
+                if (i === quantidadeParcelas - 1) {
+                    const totalParcelado = valorParcela * quantidadeParcelas;
+                    const diferenca = valorRestante - totalParcelado;
+                    if (diferenca !== 0) {
+                        valorFinalParcela = parseFloat((valorParcela + diferenca).toFixed(2));
+                    }
+                }
+
                 const { error: parcelaError } = await supabase
                   .from("financeiro")
                   .insert([
                     {
                       user_id: user.id,
                       cliente_nome: clienteData.nomeCompleto,
-                      valor: valorParcela,
+                      valor: valorFinalParcela, // Usar o valor corrigido
                       processo_id: processoCreatedId,
                       tipo: "Honorários",
                       status: "PENDENTE",
@@ -969,7 +982,9 @@ const NewProcess = () => {
             }
 
             const valorRestante = valorHonorarios - valorEntrada;
-            const valorParcela = valorRestante / quantidadeParcelas;
+
+            // CORREÇÃO AQUI: Forçar 2 casas decimais no cálculo
+            const valorParcela = parseFloat((valorRestante / quantidadeParcelas).toFixed(2));
 
             if (financeiroData.dataPrimeiroVencimento) {
               const dataBase = new Date(financeiroData.dataPrimeiroVencimento);
@@ -983,13 +998,23 @@ const NewProcess = () => {
                 const dataVencimento = new Date(dataBase);
                 dataVencimento.setMonth(dataVencimento.getMonth() + i);
 
+                // CORREÇÃO OPCIONAL (Ajuste de centavos) na criação também:
+                let valorFinalParcela = valorParcela;
+                if (i === quantidadeParcelas - 1) {
+                    const totalParcelado = valorParcela * quantidadeParcelas;
+                    const diferenca = valorRestante - totalParcelado;
+                    if (diferenca !== 0) {
+                        valorFinalParcela = parseFloat((valorParcela + diferenca).toFixed(2));
+                    }
+                }
+
                 const { error: parcelaError } = await supabase
                   .from("financeiro")
                   .insert([
                     {
                       user_id: user.id,
                       cliente_nome: clienteData.nomeCompleto,
-                      valor: valorParcela,
+                      valor: valorFinalParcela, // Usar o valor corrigido
                       processo_id: processoCreatedId,
                       tipo: "Honorários",
                       status: "PENDENTE",

@@ -42,6 +42,13 @@ Faz sentido apresentarmos essa ferramenta?
 Digite *SIM* se tiver interesse.`
 };
 
+// Nomes dos templates aprovados na Meta
+const TEMPLATE_NAMES: Record<string, string> = {
+  'IMOBILIARIA': 'abordagem_imobiliaria_v1',
+  'DENTISTA': 'abordagem_dentista_v1',
+  'ESTETICA': 'abordagem_estetica_v1'
+};
+
 // Função auxiliar de pausa (Jitter)
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -75,10 +82,9 @@ router.post('/disparar', async (req, res) => {
 
           // 3. Envia (Tenta enviar, se falhar loga e continua)
           console.log(`📨 Enviando (${index + 1}/${leads.length}) para ${lead.nome}...`);
-          
-          // Nota: O whatsappService geralmente espera '551699999999@c.us' ou só o numero dependendo da lib
-          // Ajuste conforme sua implementação do whatsappService
-          await whatsappService.sendMessage(`${numeroFinal}@c.us`, mensagem);
+          // Envia como TEMPLATE aprovado na Meta
+          const templateName = TEMPLATE_NAMES[modelo] || TEMPLATE_NAMES['IMOBILIARIA'];
+          await whatsappService.sendTemplate(numeroFinal, templateName, [lead.nome, lead.cidade]);
 
           // 4. Delay Humano (Entre 40s e 90s) para evitar bloqueio do WhatsApp
           const delay = Math.floor(Math.random() * (90000 - 40000 + 1) + 40000);

@@ -17,6 +17,13 @@ const TEMPLATES: Record<string, string> = {
   'ESTETICA': `Olá, equipe da *{{nome}}*! \n\nSou a Assistente do *Dr. Rafael Anastácio*, da Anastácio Soluções.\n\nNossa *Fiança para Cirurgias* aprova o crédito para o paciente realizar o sonho agora, e a clínica recebe com segurança.\n\nFaz sentido apresentarmos essa ferramenta?\n\nDigite *SIM* se tiver interesse.`
 };
 
+// Nomes dos templates aprovados na Meta (usar os nomes que você informou)
+const TEMPLATE_NAMES: Record<string, string> = {
+  'IMOBILIARIA': 'abordagem_imobiliaria_v1',
+  'DENTISTA': 'abordagem_dentista_v1',
+  'ESTETICA': 'abordagem_estetica_v1'
+};
+
 const NICHOS = [
   { termo: "Imobiliária", modelo: "IMOBILIARIA" },
   { termo: "Clínica Odontológica", modelo: "DENTISTA" },
@@ -47,10 +54,12 @@ export async function executarProspeccao() {
           .replace('{{nome}}', lead.nome)
           .replace('{{cidade}}', lead.cidade);
 
-        if (lead.telefoneLimpo.length >= 10) {
+           if (lead.telefoneLimpo.length >= 10) {
              console.log(`📨 [ENVIANDO] Para ${lead.nome}...`);
-             // Envia mensagem (ajuste o sufixo @c.us conforme sua lib de whats)
-             await whatsappService.sendMessage(`${lead.telefoneLimpo}@c.us`, msg);
+             // Envia como TEMPLATE aprovado na Meta usando o serviço
+             const templateName = TEMPLATE_NAMES[item.modelo] || TEMPLATE_NAMES['IMOBILIARIA'];
+             const numeroFinal = lead.telefoneLimpo; // já limpo
+             await whatsappService.sendTemplate(numeroFinal, templateName, [lead.nome, lead.cidade]);
              
              // Salva no banco
              await supabase.from('leads_prospeccao').insert({

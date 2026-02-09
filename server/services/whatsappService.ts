@@ -82,11 +82,36 @@ export async function enviarTemplateWhatsApp(telefone: string, templateName: str
     const formattedPhone = telefone.replace(/\D/g, '');
     const url = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
 
-    // Transforma o array de strings no formato que o WhatsApp exige
-    // AQUI ESTÁ A MUDANÇA: Usamos limparTextoParaTemplate() em cada variável
-    const parameters = variaveis.map(valor => ({
+    const MAX_BYTES = 30000; // margem segura abaixo do limite Meta (32768)
+
+    // Limpa variáveis e garante strings
+    const cleaned = (variaveis || []).map(v => limparTextoParaTemplate(String(v || "")));
+
+    // Calcula tamanho total em bytes UTF-8
+    const byteLen = (s: string) => Buffer.byteLength(s || "", "utf8");
+    let total = cleaned.reduce((acc, v) => acc + byteLen(v), 0);
+
+    // Se exceder, reduz a maior variável até caber
+    if (total > MAX_BYTES) {
+      console.warn(`[WhatsApp Template] Texto muito grande (${total} bytes). Aplicando truncamento para ${MAX_BYTES} bytes.`);
+      // índices e tamanhos
+      const sizes = cleaned.map(v => byteLen(v));
+      while (total > MAX_BYTES) {
+        // pega o índice da maior string
+        let idx = sizes.indexOf(Math.max(...sizes));
+        if (sizes[idx] === 0) break;
+        // remove último caracter (preserva utf8 razoavelmente)
+        cleaned[idx] = cleaned[idx].slice(0, -1);
+        const newSize = byteLen(cleaned[idx]);
+        total -= (sizes[idx] - newSize);
+        sizes[idx] = newSize;
+      }
+      console.warn(`[WhatsApp Template] Truncamento aplicado. Novo tamanho total: ${total} bytes.`);
+    }
+
+    const parameters = cleaned.map(valor => ({
       type: "text",
-      text: limparTextoParaTemplate(valor)
+      text: valor
     }));
 
     const body = {

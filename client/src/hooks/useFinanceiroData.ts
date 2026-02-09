@@ -28,7 +28,16 @@ export function useFinanceiroData() {
         .order("vencimento", { ascending: true });
 
       if (error) throw error;
-      return data || [];
+
+      // CORREÇÃO CRÍTICA AQUI:
+      // O banco pode retornar 'valor' como string. Forçamos a conversão para Number.
+      // Isso garante que cálculos e formatações funcionem corretamente na interface.
+      const dataTratada = (data || []).map((item) => ({
+        ...item,
+        valor: Number(item.valor) || 0, // Converte string "100.00" para number 100.00
+      }));
+
+      return dataTratada;
     },
     enabled: !!user && !permissionsLoading,
     staleTime: 1000 * 60 * 2,
