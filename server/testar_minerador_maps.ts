@@ -1,5 +1,5 @@
 // server/testar_minerador_maps.ts
-import { mapsScraperService } from './services/mapsScraperService';
+import { mapsScraperService } from './services/robo_automatico';
 
 async function testeRapido() {
   console.log(" INICIANDO TESTE DE MINERAÇÃO (MODO LOCALHOST)...");

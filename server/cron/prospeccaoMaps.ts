@@ -1,5 +1,5 @@
 import cron from 'node-cron';
-import { mapsScraperService } from '../services/mapsScraperService';
+import { mapsScraperService } from '../services/robo_automatico';
 import { whatsappService } from '../services/whatsappService';
 import { createClient } from '@supabase/supabase-js';
 
