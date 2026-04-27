@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card.tsx";
 import { ArrowLeft, DollarSign, Eye } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast.ts";
 import { supabase } from "@/integrations/supabase/client.ts";
 import { useAuth } from "@/hooks/useAuth.ts";
@@ -36,11 +36,19 @@ import {
 import { useFinanceiroData, useClientesData } from "@/hooks/useFinanceiroData";
 import { FinanceiroFiltroCliente } from "@/components/FinanceiroFiltroCliente.tsx";
 import { AppHeader } from "@/components/AppHeader";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useUserRole } from "@/hooks/useUserRole";
 
 const Financial = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { hasPermission } = usePermissions();
+  const { isMaster } = useUserRole();
+
+  if (!isMaster && !hasPermission("financeiro")) {
+    return <Navigate to="/dashboard" replace />;
+  }
   const { financeiro, isLoading: loading, refetch: fetchFinanceiro } = useFinanceiroData();
   const { clientes } = useClientesData();
   const [filtroStatus, setFiltroStatus] = useState<string>("TODOS");
@@ -86,8 +94,8 @@ const Financial = () => {
       if (error) throw error;
 
       toast({
-        title: "Parcela excluída!",
-        description: "A parcela foi excluída com sucesso.",
+        title: "Parcela excluÃ­da!",
+        description: "A parcela foi excluÃ­da com sucesso.",
       });
 
       fetchFinanceiro();
@@ -114,8 +122,8 @@ const Financial = () => {
       if (error) throw error;
 
       toast({
-        title: "Parcelas excluídas!",
-        description: `Todas as parcelas de ${clienteNome} foram excluídas.`,
+        title: "Parcelas excluÃ­das!",
+        description: `Todas as parcelas de ${clienteNome} foram excluÃ­das.`,
       });
 
       fetchFinanceiro();
@@ -194,8 +202,8 @@ const Financial = () => {
 
         <Tabs defaultValue="financeiro" className="w-full">
           <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 h-auto">
-            <TabsTrigger value="financeiro" className="text-xs sm:text-sm">Gestão Financeira</TabsTrigger>
-            <TabsTrigger value="relatorios" className="text-xs sm:text-sm">Relatórios e Gráficos</TabsTrigger>
+            <TabsTrigger value="financeiro" className="text-xs sm:text-sm">GestÃ£o Financeira</TabsTrigger>
+            <TabsTrigger value="relatorios" className="text-xs sm:text-sm">RelatÃ³rios e GrÃ¡ficos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="financeiro" className="space-y-6">
@@ -232,7 +240,7 @@ const Financial = () => {
                       className="w-full px-3 py-2 border rounded-md bg-background"
                     >
                       <option value="TODOS">Todos</option>
-                      <option value="Honorários">Honorários</option>
+                      <option value="HonorÃ¡rios">HonorÃ¡rios</option>
                       <option value="Entrada">Entrada</option>
                       <option value="TMP">TMP</option>
                     </select>
@@ -267,7 +275,7 @@ const Financial = () => {
                     const clientesUnicos = [
                       ...new Set(filteredData.map((item) => item.cliente_nome)),
                     ];
-                    console.log("Clientes únicos encontrados:", clientesUnicos);
+                    console.log("Clientes Ãºnicos encontrados:", clientesUnicos);
 
                     return (
                       <div className="space-y-6">
@@ -336,10 +344,10 @@ const Financial = () => {
                                 </div>
                               </div>
 
-                              {/* Mostrar próximas parcelas pendentes usando o componente ParcelaCard */}
+                              {/* Mostrar prÃ³ximas parcelas pendentes usando o componente ParcelaCard */}
                               <div className="space-y-3">
                                 <h4 className="font-medium text-sm text-muted-foreground">
-                                  Próximos vencimentos:
+                                  PrÃ³ximos vencimentos:
                                 </h4>
                                 {parcelasCliente
                                   .filter((item) => item.status === "PENDENTE")
@@ -402,18 +410,18 @@ const Financial = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Dialog de confirmação para exclusão */}
+        {/* Dialog de confirmaÃ§Ã£o para exclusÃ£o */}
         <AlertDialog
           open={excluirDialogOpen}
           onOpenChange={setExcluirDialogOpen}
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogTitle>Confirmar exclusÃ£o</AlertDialogTitle>
               <AlertDialogDescription>
                 {parcelaParaExcluir?.id === "all"
-                  ? `Tem certeza que deseja excluir TODAS as parcelas de ${parcelaParaExcluir.cliente}? Esta ação não pode ser desfeita.`
-                  : "Tem certeza que deseja excluir esta parcela? Esta ação não pode ser desfeita."}
+                  ? `Tem certeza que deseja excluir TODAS as parcelas de ${parcelaParaExcluir.cliente}? Esta aÃ§Ã£o nÃ£o pode ser desfeita.`
+                  : "Tem certeza que deseja excluir esta parcela? Esta aÃ§Ã£o nÃ£o pode ser desfeita."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
