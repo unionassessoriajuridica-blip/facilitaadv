@@ -28,7 +28,7 @@ import {
   Loader2,
   CheckSquare,
   FileSignature,
-  Bot, // Ícone para o Robô
+  Bot, // Ãcone para o RobÃ´
 } from "lucide-react";
 import { ProcessoTarefas } from "@/components/ProcessoTarefas";
 import { ProcessoArquivos } from "@/components/ProcessoArquivos";
@@ -37,6 +37,7 @@ import { useToast } from "@/hooks/use-toast.ts";
 import { supabase } from "@/integrations/supabase/client.ts";
 import { useAuth } from "@/hooks/useAuth.ts";
 import { usePermissions } from "@/hooks/usePermissions.ts";
+import { useUserRole } from "@/hooks/useUserRole.ts";
 import { useGlobalAccess } from "@/utils/accessUtils.ts";
 
 const ProcessView = () => {
@@ -53,7 +54,7 @@ const ProcessView = () => {
   const [responsavel, setResponsavel] = useState<any>(null);
   const [atualizandoDatajud, setAtualizandoDatajud] = useState(false);
 
-  // --- NOVO: Estado para as movimentações do Robô ---
+  // --- NOVO: Estado para as movimentaÃ§Ãµes do RobÃ´ ---
   const [observacoesRobo, setObservacoesRobo] = useState<any[]>([]);
 
   const {
@@ -63,7 +64,9 @@ const ProcessView = () => {
 
   const {
     loading: permissionsLoading,
+    hasPermission,
   } = usePermissions();
+  const { isMaster } = useUserRole();
 
   useEffect(() => {
     if (id && user && !permissionsLoading && !globalAccessLoading) {
@@ -71,7 +74,7 @@ const ProcessView = () => {
     }
   }, [id, user, permissionsLoading, globalAccessLoading]);
 
-  // --- NOVO: Effect para buscar e ouvir movimentações do Robô em Tempo Real ---
+  // --- NOVO: Effect para buscar e ouvir movimentaÃ§Ãµes do RobÃ´ em Tempo Real ---
   useEffect(() => {
     if (!id) return;
 
@@ -87,17 +90,17 @@ const ProcessView = () => {
 
     carregarMovimentacoesRobo();
 
-    // Inscrição no canal Realtime do Supabase
+    // InscriÃ§Ã£o no canal Realtime do Supabase
     const canal = supabase
       .channel('obs-robo-realtime')
       .on('postgres_changes', 
         { event: 'INSERT', schema: 'public', table: 'observacoes_processo', filter: `processo_id=eq.${id}` }, 
         (payload) => {
-          console.log("Nova movimentação recebida via robô!", payload);
+          console.log("Nova movimentaÃ§Ã£o recebida via robÃ´!", payload);
           carregarMovimentacoesRobo(); // Recarrega a lista
           toast({
-            title: "Nova Movimentação!",
-            description: "O robô acabou de atualizar este processo.",
+            title: "Nova MovimentaÃ§Ã£o!",
+            description: "O robÃ´ acabou de atualizar este processo.",
             className: "bg-green-500 text-white border-none"
           });
         }
@@ -129,7 +132,7 @@ const ProcessView = () => {
           variant: "destructive",
           title: "Erro",
           description:
-            "Processo não encontrado ou você não tem permissão para acessá-lo.",
+            "Processo nÃ£o encontrado ou vocÃª nÃ£o tem permissÃ£o para acessÃ¡-lo.",
         });
         navigate("/dashboard");
         return;
@@ -155,7 +158,7 @@ const ProcessView = () => {
         clienteData = clienteRes.ok ? await clienteRes.json() : null;
       }
 
-      // Fallback: Se não conseguiu buscar por ID, usar dados do join (para processos antigos)
+      // Fallback: Se nÃ£o conseguiu buscar por ID, usar dados do join (para processos antigos)
       if (!clienteData && processoData.clientes) {
         console.log("[ProcessView] Using cliente data from join (processo antigo)");
         clienteData = processoData.clientes;
@@ -168,7 +171,7 @@ const ProcessView = () => {
         fetch(`/api/processos/${id}/responsavel`, { headers })
       ]);
 
-      // Busca de documentos HÍBRIDA (Legado + Novo) via Supabase Client direto
+      // Busca de documentos HÃBRIDA (Legado + Novo) via Supabase Client direto
       // Isso resolve problemas de proxy/RLS e garante retrocompatibilidade
       const [docsLegadoRes, docsDriveRes] = await Promise.all([
         supabase.from("documentos_processo").select("*").eq("processo_id", id),
@@ -284,7 +287,7 @@ const ProcessView = () => {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Número do processo não encontrado.",
+        description: "NÃºmero do processo nÃ£o encontrado.",
       });
       return;
     }
@@ -300,20 +303,20 @@ const ProcessView = () => {
         toast({
           variant: "destructive",
           title: "Processo sob Sigilo",
-          description: "Este processo está classificado como Segredo de Justiça.",
+          description: "Este processo estÃ¡ classificado como Segredo de JustiÃ§a.",
         });
         await loadProcessData();
       } else if (result.success) {
         toast({
           title: "Dados atualizados!",
-          description: "Informações do processo foram obtidas do DataJud.",
+          description: "InformaÃ§Ãµes do processo foram obtidas do DataJud.",
         });
         await loadProcessData();
       } else {
         toast({
           variant: "destructive",
           title: "Erro ao consultar DataJud",
-          description: result.error || "Não foi possível obter os dados.",
+          description: result.error || "NÃ£o foi possÃ­vel obter os dados.",
         });
       }
     } catch (error) {
@@ -342,7 +345,7 @@ const ProcessView = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Carregando permissões...</p>
+          <p>Carregando permissÃµes...</p>
         </div>
       </div>
     );
@@ -363,7 +366,7 @@ const ProcessView = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <p className="text-lg text-muted-foreground">
-            Processo não encontrado
+            Processo nÃ£o encontrado
           </p>
           <Button onClick={() => navigate("/dashboard")} className="mt-4">
             Voltar ao Dashboard
@@ -385,7 +388,7 @@ const ProcessView = () => {
             </Button>
             <div>
               <h1 className="text-lg sm:text-2xl font-bold">Dados do Cliente</h1>
-              <p className="text-muted-foreground text-sm sm:text-base truncate max-w-[200px] sm:max-w-none">{cliente?.nome || "Cliente não disponível"}</p>
+              <p className="text-muted-foreground text-sm sm:text-base truncate max-w-[200px] sm:max-w-none">{cliente?.nome || "Cliente nÃ£o disponÃ­vel"}</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -443,6 +446,7 @@ const ProcessView = () => {
                     <span className="hidden sm:inline">Dados Pessoais</span>
                     <span className="sm:hidden">Dados</span>
                   </TabsTrigger>
+                  {(isMaster || hasPermission("financeiro")) && (
                   <TabsTrigger
                     value="financeiro"
                     className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
@@ -451,12 +455,13 @@ const ProcessView = () => {
                     <span className="hidden sm:inline">Financeiro ({financeiro.length})</span>
                     <span className="sm:hidden">Fin.</span>
                   </TabsTrigger>
+                  )}
                   <TabsTrigger
                     value="responsavel"
                     className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
                   >
                     <Users className="w-3 h-3 sm:w-4 sm:h-4" />
-                    <span className="hidden sm:inline">Responsável</span>
+                    <span className="hidden sm:inline">ResponsÃ¡vel</span>
                     <span className="sm:hidden">Resp.</span>
                   </TabsTrigger>
                   <TabsTrigger
@@ -532,7 +537,7 @@ const ProcessView = () => {
 
   <div className="md:col-span-2">
     <label className="text-sm font-medium text-muted-foreground">
-      Endereço Completo
+      EndereÃ§o Completo
     </label>
     <p className="text-base">{cliente?.endereco || "-"}</p>
   </div>
@@ -562,7 +567,7 @@ const ProcessView = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="text-sm font-medium text-muted-foreground">
-                          Número do Processo
+                          NÃºmero do Processo
                         </label>
                         <div className="flex items-center gap-2">
                           <p className="text-base font-mono">
@@ -570,7 +575,7 @@ const ProcessView = () => {
                           </p>
                           {processo.datajud_sigilo && (
                             <Badge variant="destructive" className="text-xs">
-                              Segredo de Justiça
+                              Segredo de JustiÃ§a
                             </Badge>
                           )}
                         </div>
@@ -598,7 +603,7 @@ const ProcessView = () => {
                               : "bg-success/10 text-success border-success/20"
                           }
                         >
-                          {processo.cliente_preso ? "SIM" : "NÃO"}
+                          {processo.cliente_preso ? "SIM" : "NÃO"}
                         </Badge>
                       </div>
                       <div>
@@ -612,7 +617,7 @@ const ProcessView = () => {
                       {processo.descricao && (
                         <div className="md:col-span-2">
                           <label className="text-sm font-medium text-muted-foreground">
-                            Descrição
+                            DescriÃ§Ã£o
                           </label>
                           <p className="text-base">{processo.descricao}</p>
                         </div>
@@ -623,7 +628,7 @@ const ProcessView = () => {
                   {observacoes.length > 0 && (
                     <div>
                       <h3 className="text-lg font-semibold mb-4">
-                        Observações
+                        ObservaÃ§Ãµes
                       </h3>
                       <div className="space-y-4">
                         {observacoes.map((obs, index) => (
@@ -646,15 +651,16 @@ const ProcessView = () => {
                 </div>
               </TabsContent>
 
+              {(isMaster || hasPermission("financeiro")) && (
               <TabsContent value="financeiro" className="mt-6">
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold">
-                    Informações Financeiras
+                    InformaÃ§Ãµes Financeiras
                   </h3>
 
                   {financeiro.length > 0 ? (
                     <div className="space-y-4">
-                      {["Entrada", "Honorários", "TMP"].map((tipo) => {
+                      {["Entrada", "HonorÃ¡rios", "TMP"].map((tipo) => {
                         const itens = financeiro.filter((f) => f.tipo === tipo);
                         if (itens.length === 0) return null;
 
@@ -736,16 +742,17 @@ const ProcessView = () => {
                     </div>
                   ) : (
                     <p className="text-muted-foreground">
-                      Nenhuma informação financeira cadastrada.
+                      Nenhuma informaÃ§Ã£o financeira cadastrada.
                     </p>
                   )}
                 </div>
               </TabsContent>
 
-              <TabsContent value="responsavel" className="mt-6">
+              <TabsContent
+              )} value="responsavel" className="mt-6">
                 <div className="space-y-6">
                   <h3 className="text-lg font-semibold">
-                    Responsável Financeiro
+                    ResponsÃ¡vel Financeiro
                   </h3>
 
                   {responsavel ? (
@@ -790,7 +797,7 @@ const ProcessView = () => {
                       </div>
                       <div className="md:col-span-2">
                         <label className="text-sm font-medium text-muted-foreground">
-                          Endereço
+                          EndereÃ§o
                         </label>
                         <p className="text-base">
                           {responsavel.endereco_completo}
@@ -805,7 +812,7 @@ const ProcessView = () => {
                     </div>
                   ) : (
                     <p className="text-muted-foreground">
-                      Nenhum responsável financeiro cadastrado.
+                      Nenhum responsÃ¡vel financeiro cadastrado.
                     </p>
                   )}
                 </div>
@@ -826,11 +833,11 @@ const ProcessView = () => {
               </TabsContent>
 
               <TabsContent value="info-processo" className="mt-6">
-                {/* --- NOVA SEÇÃO: MOVIMENTAÇÕES DO ROBÔ (ATUALIZADA) --- */}
+                {/* --- NOVA SEÃÃO: MOVIMENTAÃÃES DO ROBÃ (ATUALIZADA) --- */}
                 <div className="mb-8">
                   <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                     <Bot className="w-5 h-5 text-primary" />
-                    Movimentações (TJSP/Robô)
+                    MovimentaÃ§Ãµes (TJSP/RobÃ´)
                   </h3>
                   
                   <div className="rounded-md bg-gray-50 p-4 border border-gray-200 shadow-sm">
@@ -838,7 +845,7 @@ const ProcessView = () => {
                       <>
                         <div className="flex justify-between items-center mb-4 border-b pb-2">
                           <span className="text-sm font-medium text-gray-500">
-                            Última sincronização
+                            Ãltima sincronizaÃ§Ã£o
                           </span>
                           {processo.updated_at && (
                             <Badge variant="outline" className="text-xs">
@@ -853,9 +860,9 @@ const ProcessView = () => {
                     ) : (
                       <div className="p-8 text-center text-muted-foreground">
                         <Bot className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                        <p>Nenhuma movimentação importada ainda.</p>
+                        <p>Nenhuma movimentaÃ§Ã£o importada ainda.</p>
                         <p className="text-xs mt-2 italic">
-                          O robô atualizará este campo automaticamente.
+                          O robÃ´ atualizarÃ¡ este campo automaticamente.
                         </p>
                       </div>
                     )}
@@ -866,7 +873,7 @@ const ProcessView = () => {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold">
-                      Informações do Processo (DataJud)
+                      InformaÃ§Ãµes do Processo (DataJud)
                     </h3>
                     {processo?.datajud_atualizado_em && (
                       <span className="text-sm text-muted-foreground">
@@ -922,7 +929,7 @@ const ProcessView = () => {
                         </div>
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">
-                            Última Atualização CNJ
+                            Ãltima AtualizaÃ§Ã£o CNJ
                           </label>
                           <p className="text-base">
                             {datajudService.formatDateTime(processo.datajud_ultima_atualizacao_cnj)}
@@ -930,7 +937,7 @@ const ProcessView = () => {
                         </div>
                         <div>
                           <label className="text-sm font-medium text-muted-foreground">
-                            Última Movimentação
+                            Ãltima MovimentaÃ§Ã£o
                           </label>
                           <p className="text-base font-semibold text-primary">
                             {datajudService.formatDateTime(processo.datajud_ultima_movimentacao)}
@@ -940,7 +947,7 @@ const ProcessView = () => {
 
                       <div>
                         <h4 className="text-base font-semibold mb-4">
-                          Movimentações ({getMovimentos().length})
+                          MovimentaÃ§Ãµes ({getMovimentos().length})
                         </h4>
                         <div className="space-y-3 max-h-96 overflow-y-auto">
                           {getMovimentos().length > 0 ? (
@@ -969,7 +976,7 @@ const ProcessView = () => {
                             ))
                           ) : (
                             <p className="text-muted-foreground">
-                              Nenhuma movimentação encontrada.
+                              Nenhuma movimentaÃ§Ã£o encontrada.
                             </p>
                           )}
                         </div>
@@ -984,17 +991,17 @@ const ProcessView = () => {
                         Processo sob Sigilo
                       </h3>
                       <p className="text-muted-foreground max-w-md mx-auto mb-4">
-                        Este processo está classificado como Segredo de Justiça e seus dados não estão disponíveis na base pública do DataJud (CNJ).
+                        Este processo estÃ¡ classificado como Segredo de JustiÃ§a e seus dados nÃ£o estÃ£o disponÃ­veis na base pÃºblica do DataJud (CNJ).
                       </p>
                       <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                        Para obter informações sobre este processo, acesse diretamente o portal do tribunal responsável utilizando suas credenciais de advogado.
+                        Para obter informaÃ§Ãµes sobre este processo, acesse diretamente o portal do tribunal responsÃ¡vel utilizando suas credenciais de advogado.
                       </p>
                     </div>
                   ) : (
                     <div className="text-center py-8">
                       <Gavel className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
                       <p className="text-muted-foreground mb-4">
-                        Nenhuma informação do DataJud disponível.
+                        Nenhuma informaÃ§Ã£o do DataJud disponÃ­vel.
                       </p>
                       <Button
                         onClick={handleAtualizarDatajud}
