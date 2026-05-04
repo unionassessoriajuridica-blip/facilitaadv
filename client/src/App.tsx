@@ -12,7 +12,6 @@ import ProcessFinancial from "./pages/ProcessFinancial.tsx";
 import NewProcess from "./pages/NewProcess.tsx";
 import Financial from "./pages/Financial.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import IAFacilita from "./pages/IAFacilita.tsx";
 import GoogleIntegration from "./pages/GoogleIntegration.tsx";
 import CalendarManagement from "./pages/CalendarManagement.tsx";
 import FaciliSign from "./pages/FaciliSign.tsx";
@@ -68,7 +67,6 @@ const App = () => (
               <Route path="/processo/:id" element={<ProcessView />} />
               <Route path="/financeiro" element={<Financial />} />
               <Route path="/financeiro/cliente/:clienteNome" element={<ProcessFinancial />} />
-              <Route path="/ia-facilita" element={<IAFacilita />} />
               <Route path="/facilisign" element={<FaciliSign />} />
               <Route path="/google-integration" element={<GoogleIntegration />} />
               <Route path="/google-integration/callback" element={<GoogleCallback />} />
