@@ -221,13 +221,13 @@ const Dashboard = () => {
   };
 
   const handleEditProcesso = (processoId: string, processoUserId: string) => {
-    // 🔥 CORREÇÃO: Permitir editar se tem acesso GLOBAL ou se é o dono
+    // ð¥ CORREÃÃO: Permitir editar se tem acesso GLOBAL ou se Ã© o dono
     if (hasGlobalProcessAccess || processoUserId === user?.id) {
       navigate(`/processo/${processoId}`);
     } else {
       toast({
         title: "Acesso negado",
-        description: "Você não tem permissão para editar este processo",
+        description: "VocÃª nÃ£o tem permissÃ£o para editar este processo",
         variant: "destructive",
       });
     }
@@ -279,18 +279,18 @@ const Dashboard = () => {
     }
   };
 
-  // Função para formatar a data corretamente (resolvendo o problema do -1 dia)
+  // FunÃ§Ã£o para formatar a data corretamente (resolvendo o problema do -1 dia)
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
 
     const date = new Date(dateString);
-    // Adiciona um dia para corrigir o problema do fuso horário
+    // Adiciona um dia para corrigir o problema do fuso horÃ¡rio
     date.setDate(date.getDate() + 1);
 
     return date.toLocaleDateString("pt-BR");
   };
 
-  // Função para determinar a cor com base na proximidade do prazo
+  // FunÃ§Ã£o para determinar a cor com base na proximidade do prazo
   const getPrazoColor = (prazo: string) => {
     if (!prazo) return "default";
 
@@ -306,7 +306,7 @@ const Dashboard = () => {
     if (diffDays < 0) {
       return "destructive"; // Vencido - vermelho
     } else if (diffDays === 0) {
-      return "destructive"; // Vence hoje - também vermelho
+      return "destructive"; // Vence hoje - tambÃ©m vermelho
     } else if (diffDays <= 5) {
       return "warning"; // 5 dias ou menos - laranja
     } else {
@@ -314,7 +314,7 @@ const Dashboard = () => {
     }
   };
 
-  // Função para obter o texto descritivo do prazo
+  // FunÃ§Ã£o para obter o texto descritivo do prazo
   const getPrazoText = (prazo: string) => {
     if (!prazo) return "-";
 
@@ -328,17 +328,17 @@ const Dashboard = () => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return `Vencido há ${Math.abs(diffDays)} dia(s)`;
+      return `Vencido hÃ¡ ${Math.abs(diffDays)} dia(s)`;
     } else if (diffDays === 0) {
       return "Vence hoje";
     } else if (diffDays === 1) {
-      return "Vence amanhã";
+      return "Vence amanhÃ£";
     } else {
       return `Vence em ${diffDays} dias`;
     }
   };
 
-  // Função para determinar a classe CSS da linha com base no prazo
+  // FunÃ§Ã£o para determinar a classe CSS da linha com base no prazo
   const getRowClassName = (prazo: string | null) => {
     if (!prazo) return "";
     const color = getPrazoColor(prazo);
@@ -346,7 +346,7 @@ const Dashboard = () => {
     if (color === "destructive") {
       return "bg-destructive/10 hover:bg-destructive/20"; // Vermelho para vencidos
     } else if (color === "warning") {
-      return "bg-warning/10 hover:bg-warning/20"; // Laranja para próximos
+      return "bg-warning/10 hover:bg-warning/20"; // Laranja para prÃ³ximos
     }
 
     return ""; // Sem cor especial para em dia
@@ -360,7 +360,7 @@ const Dashboard = () => {
       color: "text-primary",
     },
     {
-      title: "Audiências Hoje",
+      title: "AudiÃªncias Hoje",
       value: stats.audienciasHoje.toString(),
       icon: Calendar,
       color: "text-success",
@@ -378,7 +378,7 @@ const Dashboard = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p>Carregando permissões...</p>
+          <p>Carregando permissÃµes...</p>
         </div>
       </div>
     );
@@ -611,6 +611,16 @@ const Dashboard = () => {
             </div>
           )}
 
+        <div
+          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-3 text-white cursor-pointer hover:from-amber-900 hover:to-slate-900 transition-all flex flex-col items-center justify-center text-center h-full min-h-[110px]"
+          onClick={() => navigate("/controladoria")}
+          data-testid="card-controladoria"
+        >
+          <Scale className="w-6 h-6 text-amber-400 mb-1" />
+          <h3 className="font-semibold text-xs leading-tight">Controladoria</h3>
+          <p className="text-[10px] text-gray-400 mt-1">Controle de Processos</p>
+        </div>
+
           {hasPermission("facilisign") && (
             <div
               className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-4 text-white cursor-pointer hover:from-slate-700 hover:to-slate-800 transition-all relative"
@@ -740,7 +750,7 @@ const Dashboard = () => {
             ) : processos.length === 0 ? (
               <p className="text-center py-8 text-muted-foreground">
                 Nenhum processo cadastrado. Clique em "Novo Processo" para
-                começar.
+                comeÃ§ar.
               </p>
             ) : (
               <>
@@ -748,8 +758,8 @@ const Dashboard = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="whitespace-nowrap">AÇÕES</TableHead>
-                        <TableHead className="whitespace-nowrap">Nº PROCESSO</TableHead>
+                        <TableHead className="whitespace-nowrap">AÃÃES</TableHead>
+                        <TableHead className="whitespace-nowrap">NÂº PROCESSO</TableHead>
                         <TableHead className="whitespace-nowrap">CLIENTE</TableHead>
                         <TableHead className="whitespace-nowrap hidden sm:table-cell">TIPO DO PROCESSO</TableHead>
                         <TableHead className="whitespace-nowrap hidden md:table-cell">CLIENTE PRESO</TableHead>
@@ -790,7 +800,7 @@ const Dashboard = () => {
                             {processo.numero_processo}
                           </TableCell>
                           <TableCell>
-                            {processo.clientes?.nome || "Cliente não encontrado"}
+                            {processo.clientes?.nome || "Cliente nÃ£o encontrado"}
                           </TableCell>
                           <TableCell className="hidden sm:table-cell">
                             <Badge
@@ -809,7 +819,7 @@ const Dashboard = () => {
                                   : "bg-success/10 text-success border-success/20"
                               }
                             >
-                              {processo.cliente_preso ? "SIM" : "NÃO"}
+                              {processo.cliente_preso ? "SIM" : "NÃO"}
                             </Badge>
                           </TableCell>
                           <TableCell>
@@ -836,7 +846,7 @@ const Dashboard = () => {
                                   {getPrazoColor(processo.prazo) ===
                                     "destructive" && "Vencido"}
                                   {getPrazoColor(processo.prazo) === "warning" &&
-                                    "Próximo"}
+                                    "PrÃ³ximo"}
                                   {getPrazoColor(processo.prazo) === "success" &&
                                     "Em dia"}
                                 </Badge>
@@ -856,7 +866,7 @@ const Dashboard = () => {
                     </TableBody>
                   </Table>
                 </div>
-                {/* Controles de paginação */}
+                {/* Controles de paginaÃ§Ã£o */}
                 <div className="flex justify-between items-center mt-4 gap-2">
                   <Button
                     variant="outline"
@@ -867,7 +877,7 @@ const Dashboard = () => {
                     Anterior
                   </Button>
                   <span className="text-sm text-muted-foreground">
-                    Página {currentPage} de {totalPages}
+                    PÃ¡gina {currentPage} de {totalPages}
                   </span>
                   <Button
                     variant="outline"
@@ -875,7 +885,7 @@ const Dashboard = () => {
                     onClick={handleNextPage}
                     disabled={currentPage === totalPages}
                   >
-                    Próxima
+                    PrÃ³xima
                   </Button>
                 </div>
               </>
