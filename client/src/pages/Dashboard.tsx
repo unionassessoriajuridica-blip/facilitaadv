@@ -597,29 +597,21 @@ const Dashboard = () => {
             </div>
           )}
 
-          {hasPermission("ia_facilita") && (
+        <div
+
+          {hasPermission("controladoria") && (
             <div
-              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-4 text-white cursor-pointer hover:from-slate-700 hover:to-slate-800 transition-all"
-              onClick={() => navigate("/ia-facilita")}
-              data-testid="card-ia-facilita"
+              className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-4 text-white cursor-pointer hover:from-amber-900 hover:to-slate-900 transition-all"
+              onClick={() => navigate("/controladoria")}
+              data-testid="card-controladoria"
             >
               <div className="flex flex-col items-center text-center">
-                <Bot className="w-8 h-8 text-amber-400 mb-2" />
-                <h3 className="font-semibold text-sm">IA Facilita</h3>
-                <p className="text-xs text-gray-400">Assistente inteligente</p>
+                <Scale className="w-8 h-8 text-amber-400 mb-2" />
+                <h3 className="font-semibold text-sm">Controladoria</h3>
+                <p className="text-xs text-gray-400">Controle de Processos</p>
               </div>
             </div>
           )}
-
-        <div
-          className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg p-3 text-white cursor-pointer hover:from-amber-900 hover:to-slate-900 transition-all flex flex-col items-center justify-center text-center h-full min-h-[110px]"
-          onClick={() => navigate("/controladoria")}
-          data-testid="card-controladoria"
-        >
-          <Scale className="w-6 h-6 text-amber-400 mb-1" />
-          <h3 className="font-semibold text-xs leading-tight">Controladoria</h3>
-          <p className="text-[10px] text-gray-400 mt-1">Controle de Processos</p>
-        </div>
 
           {hasPermission("facilisign") && (
             <div
