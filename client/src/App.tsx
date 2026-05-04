@@ -34,6 +34,7 @@ import AudienciasProximas from "./pages/AudienciasProximas.tsx";
 import UserProfile from "./pages/UserProfile.tsx";
 import MtdDocs from "./pages/MtdDocs.tsx";
 import PrazosDashboard from "./pages/PrazosDashboard.tsx";
+import ControladoriaProcessos from "./pages/ControladoriaProcessos.tsx";
 import { LoadingProvider } from "./contexts/LoadingContext.tsx";
 import { GlobalLoader } from "./components/GlobalLoader.tsx";
 
@@ -48,7 +49,7 @@ const App = () => (
         <GlobalLoader />
         <BrowserRouter>
           <Routes>
-            {/* Rotas Públicas */}
+            {/* Rotas PÃºblicas */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/termos-servico" element={<TermosServico />} />
@@ -80,6 +81,7 @@ const App = () => (
               <Route path="/audiencias" element={<AudienciasProximas />} />
               <Route path="/perfil" element={<UserProfile />} />
               <Route path="/docs/mtd" element={<MtdDocs />} />
+          <Route path="/controladoria" element={<ControladoriaProcessos />} />
             </Route>
 
             {/* Outras Rotas */}
